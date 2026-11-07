@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f6f1">
+  <title>LastPlate — good food, found before closing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="announcement"><span class="pulse"></span> A little less waste. A lot more local.</div>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="LastPlate home"><span class="brand-mark">l<span>p</span></span><span>lastplate</span></a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a class="nav-link active" href="#discover">Discover</a>
+      <a class="nav-link" href="#how">How it works</a>
+    </nav>
+    <button class="sell-button" id="open-seller"><span class="plus">＋</span> I have surplus</button>
+  </header>
+
+  <main>
+    <section class="hero" id="discover">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> GOOD FOOD, RIGHT AROUND YOU</div>
+        <h1>Today’s good food<br>deserves <em>another</em> day.</h1>
+        <p>Discover lovely last-minute finds from the neighbourhood spots you already love.</p>
+        <div class="hero-actions"><a class="button button-dark" href="#nearby">Find a little something <span>↘</span></a><span class="hero-note">Fresh picks. Happier prices. Less waste.</span></div>
+        <div class="hero-trust"><div class="avatar-stack"><i>🥐</i><i>🥬</i><i>🍞</i></div><span>Good things are being saved<br><b>near you today</b></span></div>
+      </div>
+      <div class="hero-art" aria-label="Illustration of fresh bakery food">
+        <div class="art-sun"></div><div class="art-note note-one">GOOD<br>THINGS<br>GO AGAIN <span>↗</span></div>
+        <div class="art-plate"><div class="plate-inner"><span class="food food-croissant">🥐</span><span class="food food-leaf">🥬</span><span class="food food-bread">🥖</span><span class="food food-tomato">🍅</span><span class="food food-cup">🥛</span></div></div>
+        <div class="art-spark spark-one">✳</div><div class="art-spark spark-two">✳</div><div class="art-label">Made today, loved again <span>↗</span></div>
+      </div>
+    </section>
+
+    <section class="nearby-section" id="nearby">
+      <div class="section-top">
+        <div><div class="eyebrow muted-eyebrow">A FEW GOOD FINDS</div><h2>On the menu <span>today</span></h2></div>
+        <div class="location-pill"><span>⌖</span><span>Downtown Toronto</span><span class="chevron">⌄</span></div>
+      </div>
+      <div class="filter-row" role="tablist" aria-label="Filter listings">
+        <button class="filter active" data-filter="All">All finds <span id="count-all">0</span></button>
+        <button class="filter" data-filter="Bakery">Bakery</button><button class="filter" data-filter="Cafe">Cafés</button>
+        <span class="filter-spacer"></span><span class="today-label"><span class="clock-icon">◷</span> Pickup today</span>
+      </div>
+      <div class="listing-grid" id="listing-grid" aria-live="polite"></div>
+      <div class="empty-state hidden" id="empty-state"><div>🍃</div><h3>Nothing on the menu just yet</h3><p>Check back soon for a lovely local find.</p></div>
+    </section>
+
+    <section class="how-section" id="how">
+      <div class="how-intro"><div class="eyebrow">GOOD FOOD, KEPT SIMPLE</div><h2>A small find<br>can do <em>a lot.</em></h2><p>Surplus shouldn’t go to waste. We make it easy for local shops to share the good stuff before closing time.</p></div>
+      <div class="how-steps"><article><div class="step-no">01</div><span class="step-emoji">👀</span><h3>Find your local</h3><p>See what nearby shops have fresh and ready today.</p></article><article><div class="step-no">02</div><span class="step-emoji">🛍️</span><h3>Pick a good thing</h3><p>Choose a surprise bundle at a happier price.</p></article><article><div class="step-no">03</div><span class="step-emoji">🚶</span><h3>Pop by & pick up</h3><p>Collect from the shop before its pickup time.</p></article></div>
+    </section>
+    <section class="join-banner"><span class="join-illustration">🥖</span><div><div class="eyebrow">FOR OUR LOCAL FAVOURITES</div><h2>Got a little extra today?</h2><p>Put good food back on someone’s table.</p></div><button class="button button-dark" id="open-seller-lower">Share your surplus <span>↗</span></button></section>
+  </main>
+  <footer><a class="brand footer-brand" href="/"><span class="brand-mark">l<span>p</span></span><span>lastplate</span></a><span>Good food goes again. © 2026 LastPlate</span><a href="#how">A little about us ↗</a></footer>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <button class="close-drawer" id="close-drawer" aria-label="Close">×</button>
+      <div id="drawer-content"></div>
+    </aside>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

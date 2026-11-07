@@ -1,4 +1,4 @@
-const state = { listings: [], filter: 'All', config: null, selected: null, quantity: 1, paypalLoaded: false };
+const state = { listings: [], filter: 'All', config: null, selected: null, quantity: 1, paypalLoaded: false, recommendations: [] };
 const grid = document.querySelector('#listing-grid');
 const overlay = document.querySelector('#overlay');
 const drawerContent = document.querySelector('#drawer-content');
@@ -23,7 +23,11 @@ function notify(message) {
 }
 
 function renderListings() {
-  const visible = state.listings.filter((listing) => state.filter === 'All' || listing.category.toLowerCase() === state.filter.toLowerCase());
+  const filtered = state.listings.filter((listing) => state.filter === 'All' || listing.category.toLowerCase() === state.filter.toLowerCase());
+  const matches = new Map(state.recommendations.map((item) => [item.listingId, item.reason]));
+  const visible = state.recommendations.length
+    ? state.recommendations.map((item) => state.listings.find((listing) => listing.id === item.listingId)).filter(Boolean)
+    : filtered;
   document.querySelector('#count-all').textContent = state.listings.length;
   document.querySelector('#empty-state').classList.toggle('hidden', visible.length > 0);
   grid.innerHTML = visible.map((listing) => {
@@ -31,7 +35,7 @@ function renderListings() {
     return `<article class="listing-card" data-id="${escapeHTML(listing.id)}" tabindex="0" role="button" aria-label="View ${escapeHTML(listing.title)}">
       <div class="card-art ${categoryClass}"><span class="category-tag">${escapeHTML(listing.category.toUpperCase())}</span><span class="save-tag" aria-hidden="true">♡</span><span class="card-emoji" aria-hidden="true">${escapeHTML(listing.image)}</span></div>
       <div class="card-body"><p class="card-shop">${escapeHTML(listing.shop)}</p><div class="card-title-row"><h3 class="card-title">${escapeHTML(listing.title)}</h3><div class="price"><strong>${money(listing.price)}</strong><del>${money(listing.originalValue)}</del></div></div>
-      <p class="card-description">${escapeHTML(listing.description)}</p><div class="card-meta"><span class="pickup-time"><span>◷</span> ${escapeHTML(listing.pickupBy)}</span><span class="stock">${listing.quantity} left</span></div></div></article>`;
+      <p class="card-description">${escapeHTML(listing.description)}</p>${matches.has(listing.id) ? `<div class="ai-match-reason"><span>✳</span> ${escapeHTML(matches.get(listing.id))}</div>` : ''}<div class="card-meta"><span class="pickup-time"><span>◷</span> ${escapeHTML(listing.pickupBy)}</span><span class="stock">${listing.quantity} left</span></div></div></article>`;
   }).join('');
   grid.querySelectorAll('.listing-card').forEach((card) => {
     const open = () => openListing(card.dataset.id);
@@ -151,7 +155,7 @@ function openSeller() {
       if (!priceInput.value) priceInput.value = Number(draft.suggestedPrice || 0).toFixed(2);
       else priceInput.value = Number(draft.suggestedPrice || priceInput.value).toFixed(2);
       document.querySelector('#ai-status-text').textContent = draft.note || 'Review the listing and set your price before publishing.';
-      document.querySelector('#seller-preview').innerHTML = `<div class="seller-preview"><b>${escapeHTML(draft.title)} · suggested ${money(draft.suggestedPrice)}</b>${escapeHTML(draft.description)}<div style="margin-top:6px;color:#88917f">${(draft.tags || []).map(escapeHTML).join(' · ')}</div></div>`;
+      document.querySelector('#seller-preview').innerHTML = `<div class="seller-preview"><b>Review and edit your AI draft · suggested ${money(draft.suggestedPrice)}</b><label class="form-label" for="draft-title">Listing title</label><input class="form-control" id="draft-title" maxlength="100" value="${escapeHTML(draft.title)}" required><label class="form-label" for="draft-description">Listing description</label><textarea class="form-control" id="draft-description" maxlength="500" rows="4" required>${escapeHTML(draft.description)}</textarea><div style="margin-top:6px;color:#88917f">Suggested tags: ${(draft.tags || []).map(escapeHTML).join(' · ')}</div></div>`;
       form.dataset.tags = JSON.stringify(draft.tags || []);
       notify('Draft ready. Review it, then publish when it looks right.');
     } catch (error) { notify(error.message); }
@@ -159,11 +163,13 @@ function openSeller() {
   });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!form.dataset.title || !form.dataset.description) return notify('Draft the listing first so you can review it before publishing.');
+    const approvedTitle = document.querySelector('#draft-title')?.value.trim();
+    const approvedDescription = document.querySelector('#draft-description')?.value.trim();
+    if (!approvedTitle || !approvedDescription) return notify('Draft the listing first so you can review it before publishing.');
     const values = Object.fromEntries(new FormData(form).entries());
     const button = document.querySelector('#publish-button'); button.disabled = true; button.textContent = 'Publishing…';
     try {
-      const listing = await api('/api/listings', { ...values, title: form.dataset.title, description: form.dataset.description, image: values.category === 'Bakery' ? '🥐' : values.category === 'Cafe' ? '🥗' : '🍽️', tags: JSON.parse(form.dataset.tags || '[]') });
+      const listing = await api('/api/listings', { ...values, title: approvedTitle, description: approvedDescription, image: values.category === 'Bakery' ? '🥐' : values.category === 'Cafe' ? '🥗' : '🍽️', tags: JSON.parse(form.dataset.tags || '[]') });
       await refreshListings(); openListing(listing.id); notify('Your surplus is on the menu.');
     } catch (error) { notify(error.message); button.disabled = false; button.innerHTML = 'Publish find <span>↗</span>'; }
   });
@@ -176,8 +182,36 @@ async function refreshListings() {
 
 document.querySelectorAll('.filter').forEach((button) => button.addEventListener('click', () => {
   document.querySelectorAll('.filter').forEach((item) => item.classList.remove('active'));
-  button.classList.add('active'); state.filter = button.dataset.filter; renderListings();
+  button.classList.add('active'); state.filter = button.dataset.filter; state.recommendations = []; document.querySelector('#ai-results').classList.add('hidden'); renderListings();
 }));
+document.querySelector('#ai-search-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const query = document.querySelector('#ai-query').value.trim();
+  if (!query) return;
+  const button = document.querySelector('#ai-search-button');
+  const results = document.querySelector('#ai-results');
+  button.disabled = true; button.textContent = 'Finding a good fit…';
+  results.classList.add('hidden');
+  state.recommendations = [];
+  renderListings();
+  try {
+    const data = await api('/api/ai/recommend', { query });
+    state.recommendations = data.recommendations || [];
+    state.filter = 'All';
+    document.querySelectorAll('.filter').forEach((filter) => filter.classList.toggle('active', filter.dataset.filter === 'All'));
+    results.className = 'ai-results';
+    results.innerHTML = `<p>${escapeHTML(data.message)}${state.recommendations.length ? ` <b>${state.recommendations.length} match${state.recommendations.length === 1 ? '' : 'es'} below.</b>` : ''}</p><button type="button" id="clear-ai-results">Show all finds</button>`;
+    document.querySelector('#clear-ai-results').addEventListener('click', () => { state.recommendations = []; results.classList.add('hidden'); renderListings(); });
+    renderListings();
+  } catch (error) {
+    results.className = 'ai-results error';
+    results.innerHTML = `<p>${escapeHTML(error.message)}</p><button type="button" id="dismiss-ai-error">Dismiss</button>`;
+    document.querySelector('#dismiss-ai-error').addEventListener('click', () => results.classList.add('hidden'));
+  } finally {
+    button.disabled = false; button.innerHTML = 'Find my match <span>↗</span>';
+    results.classList.remove('hidden');
+  }
+});
 document.querySelector('#open-seller').addEventListener('click', openSeller);
 document.querySelector('#open-seller-lower').addEventListener('click', openSeller);
 document.querySelector('#close-drawer').addEventListener('click', closeDrawer);
@@ -187,6 +221,7 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && 
 async function init() {
   try {
     state.config = await api('/api/config');
+    if (!state.config.aiConfigured) document.querySelector('.ai-discovery-copy span').textContent = 'Preview only: add an OpenAI API key to enable live matching.';
     await refreshListings();
   } catch (error) { notify(error.message); }
 }

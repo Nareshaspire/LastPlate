@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/hackathon.css">
+  <link rel="stylesheet" href="/recommendation.css">
 </head>
 <body>
   <div class="announcement"><span class="pulse"></span> A little less waste. A lot more local.</div>
@@ -42,6 +44,14 @@
         <div><div class="eyebrow muted-eyebrow">A FEW GOOD FINDS</div><h2>On the menu <span>today</span></h2></div>
         <div class="location-pill"><span>⌖</span><span>Downtown Toronto</span><span class="chevron">⌄</span></div>
       </div>
+      <form class="ai-discovery" id="ai-search-form">
+        <div class="ai-discovery-icon">✳</div>
+        <div class="ai-discovery-copy"><label for="ai-query">Looking for something in particular?</label><span>Ask in your own words and LastPlate will find a good match.</span></div>
+        <input id="ai-query" name="query" placeholder="e.g. A vegetarian bite under $8 before 6:30" maxlength="500" autocomplete="off" required>
+        <button type="submit" id="ai-search-button">Find my match <span>↗</span></button>
+        <p class="ai-disclosure">AI reads your request to match today’s menu. For allergies or medical dietary needs, check with the shop directly.</p>
+      </form>
+      <div class="ai-results hidden" id="ai-results" aria-live="polite"></div>
       <div class="filter-row" role="tablist" aria-label="Filter listings">
         <button class="filter active" data-filter="All">All finds <span id="count-all">0</span></button>
         <button class="filter" data-filter="Bakery">Bakery</button><button class="filter" data-filter="Cafe">Cafés</button>

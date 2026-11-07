@@ -8,8 +8,13 @@ let toastTimer;
 const escapeHTML = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const money = (amount) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: state.config?.currency || 'USD', maximumFractionDigits: 0 }).format(Number(amount || 0));
 
-async function api(path, body) {
-  const response = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+async function api(path, body, method = body ? 'POST' : 'GET') {
+  const options = { method };
+  if (body !== undefined) {
+    options.headers = { 'content-type': 'application/json' };
+    options.body = JSON.stringify(body);
+  }
+  const response = await fetch(path, options);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Something went wrong');
   return data;
@@ -125,11 +130,11 @@ async function mountPaypal(listing) {
   document.head.append(script);
 }
 
-function openSeller() {
+function openListingForm(user) {
   state.selected = null;
   drawerContent.innerHTML = `<div class="seller-head"><div class="eyebrow"><span class="eyebrow-dot"></span> FOR LOCAL SHOPS</div><h2 id="drawer-title">Make a little extra<br>go a little further.</h2><p>Tell us what’s left today. Your listing stays a draft until you’ve reviewed and published it.</p></div>
     <form id="seller-form">
-      <label class="form-label" for="shop-name">Shop name</label><input class="form-control" id="shop-name" name="shop" placeholder="e.g. Morrow & Rye" required value="Morrow & Rye">
+      <label class="form-label" for="shop-name">Shop name</label><input class="form-control" id="shop-name" name="shop" required value="${escapeHTML(user?.name || 'Morrow & Rye')}" readonly>
       <div class="form-grid"><div><label class="form-label" for="category">Shop type</label><select class="form-control" id="category" name="category"><option>Bakery</option><option>Cafe</option><option>Other</option></select></div><div><label class="form-label" for="item-count">Bundles available</label><input class="form-control" id="item-count" name="quantity" type="number" min="1" max="100" value="4" required></div></div>
       <label class="form-label" for="items">What’s in the surplus?</label><textarea class="form-control" id="items" name="items" rows="3" placeholder="e.g. 2 croissants, 1 sourdough loaf, 3 morning buns" required></textarea><p class="form-help">The writing assistant only uses details you provide.</p>
       <div class="form-grid"><div><label class="form-label" for="original-value">Usual value per bundle</label><input class="form-control" id="original-value" name="originalValue" type="number" min="1" step="0.5" value="16" required></div><div><label class="form-label" for="price">Your price</label><input class="form-control" id="price" name="price" type="number" min="0.5" step="0.5" placeholder="Set after draft" required></div></div>
@@ -169,10 +174,100 @@ function openSeller() {
     const values = Object.fromEntries(new FormData(form).entries());
     const button = document.querySelector('#publish-button'); button.disabled = true; button.textContent = 'Publishing…';
     try {
-      const listing = await api('/api/listings', { ...values, title: approvedTitle, description: approvedDescription, image: values.category === 'Bakery' ? '🥐' : values.category === 'Cafe' ? '🥗' : '🍽️', tags: JSON.parse(form.dataset.tags || '[]') });
-      await refreshListings(); openListing(listing.id); notify('Your surplus is on the menu.');
+      const result = await api('/api/listings', { ...values, title: approvedTitle, description: approvedDescription, image: values.category === 'Bakery' ? '🥐' : values.category === 'Cafe' ? '🥗' : '🍽️', tags: JSON.parse(form.dataset.tags || '[]') });
+      await refreshListings(); await renderSellerDashboard(user); notify('Your surplus is on the menu.');
     } catch (error) { notify(error.message); button.disabled = false; button.innerHTML = 'Publish find <span>↗</span>'; }
   });
+}
+
+function showSellerAuth(mode = 'login') {
+  const isSignup = mode === 'signup';
+  drawerContent.innerHTML = `<section class="seller-auth"><div class="eyebrow"><span class="eyebrow-dot"></span> FOR LOCAL SHOPS</div><h2>${isSignup ? 'Create your shop account' : 'Welcome back'}</h2><p>${isSignup ? 'Set up an account to publish and manage your surplus listings.' : 'Sign in to manage listings and pickup orders.'}</p>
+    <form id="seller-auth-form">
+      ${isSignup ? '<label class="form-label" for="seller-name">Shop name</label><input class="form-control" id="seller-name" name="name" maxlength="120" autocomplete="organization" required>' : ''}
+      <label class="form-label" for="seller-email">Email</label><input class="form-control" id="seller-email" name="email" type="email" autocomplete="email" required>
+      <label class="form-label" for="seller-password">Password</label><input class="form-control" id="seller-password" name="password" type="password" minlength="8" maxlength="100" autocomplete="${isSignup ? 'new-password' : 'current-password'}" required>
+      <button class="button button-dark" type="submit" style="width:100%;justify-content:center;margin-top:18px">${isSignup ? 'Create account' : 'Sign in'} <span>↗</span></button>
+    </form>
+    <p class="seller-auth-switch">${isSignup ? 'Already have a shop account?' : 'New to LastPlate?'} <button id="seller-auth-toggle" type="button">${isSignup ? 'Sign in' : 'Create an account'}</button></p></section>`;
+  openDrawer();
+  document.querySelector('#seller-auth-toggle').addEventListener('click', () => showSellerAuth(isSignup ? 'login' : 'signup'));
+  document.querySelector('#seller-auth-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const user = await api(`/api/auth/${isSignup ? 'signup' : 'login'}`, Object.fromEntries(new FormData(form).entries()));
+      await renderSellerDashboard(user.user);
+    } catch (error) {
+      notify(error.message);
+      submit.disabled = false;
+    }
+  });
+}
+
+async function openSeller() {
+  try {
+    const { user } = await api('/api/auth/me');
+    await renderSellerDashboard(user);
+  } catch (error) {
+    if (error.message !== 'Authentication required.') return notify(error.message);
+    showSellerAuth('login');
+  }
+}
+
+async function renderSellerDashboard(user) {
+  try {
+    const [listingResult, orderResult] = await Promise.all([
+      api('/api/seller/listings'),
+      api('/api/seller/orders')
+    ]);
+    const listings = listingResult.listings || [];
+    const orders = orderResult.orders || [];
+    const activeCount = listings.filter((listing) => listing.status === 'active').length;
+    const pendingCount = orders.filter((order) => order.status === 'reserved' || order.status === 'paid').length;
+    drawerContent.innerHTML = `<section class="seller-dashboard">
+      <div class="seller-dashboard-head"><div><div class="eyebrow"><span class="eyebrow-dot"></span> SHOP DASHBOARD</div><h2>${escapeHTML(user?.name || 'Your shop')}</h2><p>${activeCount} active listing${activeCount === 1 ? '' : 's'} · ${pendingCount} pickup${pendingCount === 1 ? '' : 's'} to prepare</p></div>
+        <div class="seller-dashboard-actions"><button id="dashboard-add-listing" type="button">＋ Add listing</button><button id="seller-logout" type="button">Sign out</button></div>
+      </div>
+      <section class="seller-dashboard-section"><h3>Your listings</h3><div class="seller-dashboard-list">${listings.length ? listings.map((listing) => `<article class="seller-dashboard-item"><div><h4>${escapeHTML(listing.title)}</h4><p>${money(listing.price)} · ${listing.quantity} left · ${escapeHTML(listing.status)}</p></div><div class="seller-item-actions">${listing.status === 'active' ? `<button type="button" data-listing-deactivate="${listing.id}">Pause listing</button>` : `<button type="button" data-listing-activate="${listing.id}">Reactivate</button>`}</div></article>`).join('') : '<p class="seller-empty">No listings yet. Add your first surplus bundle.</p>'}</div></section>
+      <section class="seller-dashboard-section"><h3>Pickup orders</h3><div class="seller-dashboard-list">${orders.length ? orders.map((order) => `<article class="seller-dashboard-item"><div><h4>${escapeHTML(order.title || order.listingTitle || 'Bundle')} · ${order.quantity} bundle${order.quantity === 1 ? '' : 's'}</h4><p>${escapeHTML(order.buyerName)} · ${money(order.total)} · ${escapeHTML(order.status)} · Pickup code <span class="seller-order-code">${escapeHTML(order.pickupCode)}</span></p></div><div class="seller-order-actions">${order.status === 'reserved' || order.status === 'paid' ? `<button type="button" data-order-picked-up="${order.id}">Mark picked up</button><button type="button" data-order-cancel="${order.id}">Cancel</button>` : ''}</div></article>`).join('') : '<p class="seller-empty">No pickup orders yet.</p>'}</div></section>
+    </section>`;
+    openDrawer();
+    document.querySelector('#dashboard-add-listing').addEventListener('click', () => openListingForm(user));
+    document.querySelector('#seller-logout').addEventListener('click', async () => {
+      try {
+        await api('/api/auth/logout', undefined, 'POST');
+        showSellerAuth('login');
+      } catch (error) { notify(error.message); }
+    });
+    drawerContent.querySelectorAll('[data-listing-deactivate], [data-listing-activate]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = button.dataset.listingDeactivate || button.dataset.listingActivate;
+        const status = button.dataset.listingDeactivate ? 'inactive' : 'active';
+        try {
+          await api(`/api/listings/${id}`, { status }, 'PATCH');
+          await refreshListings();
+          await renderSellerDashboard(user);
+        } catch (error) { notify(error.message); }
+      });
+    });
+    drawerContent.querySelectorAll('[data-order-picked-up], [data-order-cancel]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = button.dataset.orderPickedUp || button.dataset.orderCancel;
+        const status = button.dataset.orderPickedUp ? 'picked_up' : 'cancelled';
+        try {
+          await api(`/api/orders/${id}/status`, { status }, 'PATCH');
+          await refreshListings();
+          await renderSellerDashboard(user);
+        } catch (error) { notify(error.message); }
+      });
+    });
+  } catch (error) {
+    if (error.message === 'Authentication required.') return showSellerAuth('login');
+    notify(error.message);
+  }
 }
 
 async function refreshListings() {

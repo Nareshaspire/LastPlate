@@ -26,6 +26,12 @@ Open <http://localhost:3000>.
 
 Without API credentials, LastPlate shows a clearly labelled local demo reservation and a non-AI writing preview. AI buyer matching and PayPal checkout require the credentials below. Do not describe the fallback as an AI recommendation or real payment.
 
+## Seller MVP
+
+Select **I have surplus** to create a shop account or sign in. The seller dashboard lets the signed-in shop publish listings, pause or reactivate them, review orders and pickup codes, cancel orders, and mark pickups complete. Seller accounts and marketplace data are stored in the local `lastplate.db` SQLite file.
+
+Set a unique `SESSION_SECRET` in `.env` before deploying. The built-in session store and local SQLite database are intended for development and a single-process demo, not a multi-instance production deployment.
+
 ## Connect AI and PayPal Sandbox
 
 Create a free PayPal Developer account and a Sandbox app. Add the Sandbox client ID and secret to `.env`; never put the secret in browser code or Git. Add an OpenAI API key for live AI drafting and buyer matching. `.env` is ignored by Git.

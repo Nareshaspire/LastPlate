@@ -64,7 +64,7 @@ function closeDrawer() {
 }
 
 function openListing(id) {
-  const listing = state.listings.find((item) => item.id === id);
+  const listing = state.listings.find((item) => String(item.id) === String(id));
   if (!listing) return;
   state.selected = listing;
   state.quantity = 1;

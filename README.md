@@ -1,70 +1,51 @@
 # LastPlate
 
-**An AI surplus-food marketplace for neighbourhood shops.** LastPlate helps bakeries and cafés turn end-of-day food into clear, fairly priced pickup bundles, then helps nearby shoppers find a good fit and pay through PayPal Sandbox.
+A local, AI-assisted surplus-food marketplace for neighbourhood shops. Sellers can publish end-of-day bundles, shoppers can search in plain language, and the app supports a PayPal Sandbox checkout flow for pickup orders.
 
-## The experience
+## What the app does
 
-1. A shop enters its remaining items, quantity, pickup deadline, price context, and verified ingredient/allergen information.
-2. AI drafts an honest title, description, price suggestion, and tags. The shop reviews and edits the draft before publishing.
-3. A shopper describes what they want in everyday language. AI matches the request against currently available bundles and explains each match.
-4. The shopper reviews a specific bundle, quantity, shop details, and pickup deadline, then chooses PayPal checkout. The server creates and captures the PayPal Sandbox order using its own listing and price records.
-5. A completed order reduces the available quantity and returns a pickup code.
-
-AI does not create or approve listings, infer ingredients, promise dietary suitability, verify food safety, or authorize payments. Buyers with allergies or medical dietary needs are directed to confirm details with the shop. The shopper always reviews the selected bundle and approves payment in PayPal.
+1. A shop enters what remains at closing, pickup time, price context, and ingredient details.
+2. An OpenAI Responses API request drafts a listing title, description, suggested price, and tags.
+3. The seller reviews and edits that draft before publishing.
+4. A shopper describes what they want in plain language and the app recommends matching listings from the live menu.
+5. A buyer completes a PayPal Sandbox checkout and receives a pickup code.
 
 ## Run locally
 
-Requires Node.js 20 or newer. No package installation is needed.
+Requires Node.js 20 or newer.
 
-```sh
+```bash
 cp .env.example .env
-# Add your keys to .env, then:
+# fill in your private values in .env
+npm install
 npm start
 ```
 
-Open <http://localhost:3000>.
+Then open http://localhost:3000.
 
-Without API credentials, LastPlate shows a clearly labelled local demo reservation and a non-AI writing preview. AI buyer matching and PayPal checkout require the credentials below. Do not describe the fallback as an AI recommendation or real payment.
-
-## Seller MVP
-
-Select **I have surplus** to create a shop account or sign in. The seller dashboard lets the signed-in shop publish listings, pause or reactivate them, review orders and pickup codes, cancel orders, and mark pickups complete. Seller accounts and marketplace data are stored in the local `lastplate.db` SQLite file.
-
-Set a unique `SESSION_SECRET` in `.env` before deploying. The built-in session store and local SQLite database are intended for development and a single-process demo, not a multi-instance production deployment.
-
-## Connect AI and PayPal Sandbox
-
-Create a free PayPal Developer account and a Sandbox app. Add the Sandbox client ID and secret to `.env`; never put the secret in browser code or Git. Add an OpenAI API key for live AI drafting and buyer matching. `.env` is ignored by Git.
+## Environment variables
 
 ```dotenv
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-6-astra
+OPENAI_MODEL=gpt-4o-mini
 PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_sandbox_secret
 CURRENCY=CAD
 PORT=3000
+SESSION_SECRET=a-long-random-secret
 ```
 
-Restart `npm start` after changing `.env`. PayPal is configured for Sandbox only. The amount is looked up from the selected listing on the server; the browser cannot set the charge amount.
+- `OPENAI_API_KEY` is required for the real AI draft and recommendation flow.
+- `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` are required for real PayPal Sandbox checkout.
+- Keep `.env` private and do not commit it to Git.
 
-## AI and payments
+## Notes
 
-- **AI:** OpenAI Responses API with Structured Outputs. One task drafts merchant listings from seller-provided notes. A separate task matches a shopper request to exact IDs from the live available bundle catalogue; the server validates every returned ID. Buyer requests are sent to OpenAI, so do not enter allergy or medical information.
-- **PayPal:** PayPal JavaScript SDK checkout backed by server-side Orders v2 create and capture requests to PayPal Sandbox. The app does not claim to be a payment processor or use production credentials.
-- **Data:** Sample listings and orders are held in server memory and reset on restart. There is no seller login, persistent database, reservation expiry, refund flow, email receipt, or production food-safety workflow.
-
-## Hackathon demo walkthrough
-
-Use Sandbox credentials and an OpenAI API key for the full experience.
-
-1. On the merchant form, enter a short surplus list and verified ingredients; request an AI draft, edit it, and publish.
-2. On the buyer page, ask for a low-cost bundle before a chosen pickup time. Show the AI explanation and select a recommended listing.
-3. Complete PayPal Sandbox checkout. Show the confirmation and pickup code, then show inventory reduced.
-
-For a UI-only preview, use the sample bakery bundles. The fallback reservation is clearly marked as a demo and does not move money.
-
-See [HACKATHON_SUBMISSION.md](HACKATHON_SUBMISSION.md) for a project description draft and a sub-three-minute recording plan.
+- The app reads `.env` automatically when it starts.
+- AI output is structured with the OpenAI Responses API and validated before being used.
+- Recommendations are filtered against the currently active listings before being returned to the client.
+- Seller and buyer flows are still intended for local demo use unless you add the required credentials and test the full flow in your environment.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT.

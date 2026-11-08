@@ -1,1 +1,25 @@
 .ai-match-reason{margin-top:10px;padding:8px 9px;border-radius:4px;background:#f0f3e9;color:#5d7355;font-size:9px;line-height:1.5}.ai-match-reason span{color:#8da077;margin-right:4px}
+
+/* Make the most time-sensitive buying details easy to scan. */
+.listing-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.listing-card:hover,.listing-card:focus-visible{transform:translateY(-2px);box-shadow:0 10px 28px rgba(29,41,36,.12);outline:none}
+.listing-card:focus-visible{border-color:var(--green);box-shadow:0 0 0 3px rgba(49,93,70,.24),0 10px 28px rgba(29,41,36,.12)}
+.card-title-row{align-items:flex-start;gap:12px}
+.price{flex:0 0 auto;text-align:right;white-space:nowrap}
+.price strong{display:block;color:var(--ink);font-size:18px;font-weight:800;line-height:1.15}
+.price del{display:block;margin-top:3px;color:#69736c;font-size:12px}
+.card-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:11px;border-top:1px solid var(--line)}
+.pickup-time{color:#34483b;font-weight:700}
+.stock{padding:5px 8px;border-radius:999px;background:#eff2e9;color:#34483b;font-size:12px;font-weight:700;white-space:nowrap}
+
+/* Keep the modal usable at short viewport heights and make keyboard focus obvious. */
+.drawer{max-height:100vh;overflow-y:auto;overscroll-behavior:contain}
+.drawer :is(button,input,textarea,select,a,[tabindex]):focus-visible{outline:3px solid #315d46;outline-offset:3px}
+.close-drawer{min-width:44px;min-height:44px}
+@media (max-width:520px){
+  .card-meta{align-items:flex-start;flex-direction:column}
+  .price strong{font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .listing-card{transition:none}
+}

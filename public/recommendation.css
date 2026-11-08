@@ -1,53 +1,54 @@
 .ai-match-reason{margin-top:10px;padding:8px 9px;border-radius:6px;background:#f0f3e9;color:#5d7355;font-size:9px;line-height:1.4}.ai-match-reason span{color:#8da077;margin-right:4px}
 
-/* A polished retail finish, with warm local-market details and clear next steps. */
-.listing-card{display:flex;flex-direction:column;min-height:100%;gap:0;overflow:hidden;border:1px solid rgba(29,41,36,.09);border-radius:16px;background:var(--paper);box-shadow:0 3px 12px rgba(29,41,36,.045);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-.listing-card:hover,.listing-card:focus-visible{transform:translateY(-3px);border-color:rgba(49,93,70,.34);box-shadow:0 14px 34px rgba(29,41,36,.12);outline:none}
-.listing-card:focus-visible{box-shadow:0 0 0 3px rgba(49,93,70,.25),0 14px 34px rgba(29,41,36,.12)}
-.card-art{position:relative;min-height:150px;overflow:hidden}
-.card-body{display:flex;flex:1;flex-direction:column;padding:15px 16px 14px}
-.card-shop{margin:0 0 7px;color:var(--green);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:800}
+/* Premium-retail polish: warm neutrals, crisp hierarchy, restrained accents. */
+:root{--premium-ink:#202a24;--premium-muted:#68736b;--premium-line:#e6e5dc;--premium-paper:#fffefa}
+body{font-family:'DM Sans',var(--sans,sans-serif);letter-spacing:-.01em}
+h1,h2,h3,.card-title,.drawer-title{font-family:'Manrope',var(--display,sans-serif);letter-spacing:-.045em}
+.nearby-section{padding-top:clamp(38px,6vw,76px);padding-bottom:clamp(48px,7vw,88px)}
+.section-top{margin-bottom:20px}
+.listing-grid{gap:20px}
+.listing-card{position:relative;display:flex;flex-direction:column;min-height:100%;overflow:hidden;border:1px solid rgba(32,42,36,.1);border-radius:16px;background:var(--premium-paper);box-shadow:0 3px 12px rgba(32,42,36,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.listing-card:hover,.listing-card:focus-visible{transform:translateY(-3px);border-color:rgba(49,93,70,.34);box-shadow:0 14px 34px rgba(32,42,36,.11);outline:none}
+.listing-card:focus-visible{box-shadow:0 0 0 3px rgba(49,93,70,.25),0 14px 34px rgba(32,42,36,.11)}
+.card-art{min-height:155px}
+.card-body{display:flex;flex:1;flex-direction:column;padding:16px 17px 15px}
+.card-shop{margin:0 0 7px;color:var(--green);font-size:10px;letter-spacing:.11em;text-transform:uppercase;font-weight:800}
 .card-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
-.card-title{margin:0;font:800 18px/1.22 var(--display);letter-spacing:-.03em}
+.card-title{margin:0;font:800 18px/1.23 'Manrope',var(--display,sans-serif);letter-spacing:-.04em}
 .price{flex:0 0 auto;text-align:right;white-space:nowrap}
-.price strong{display:block;color:var(--ink);font-size:19px;font-weight:800;line-height:1.15}
-.price del{display:block;margin-top:4px;color:#737b75;font-size:11px;line-height:1.1}
-.card-description{margin:0;color:#626d65;font-size:13px;line-height:1.5}
-.card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
-.pickup-time{display:inline-flex;align-items:center;gap:6px;color:#34483b;font-size:12px;font-weight:700;line-height:1.3}
-.stock{padding:5px 9px;border:1px solid rgba(49,93,70,.12);border-radius:999px;background:#eff2e9;color:#34483b;font-size:11px;font-weight:800;white-space:nowrap}
-.card-meta::after{content:'View bundle →';display:inline-flex;align-items:center;color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}
+.price strong{display:block;color:var(--premium-ink);font-size:19px;font-weight:800;line-height:1.15}
+.price del{display:block;margin-top:4px;color:var(--premium-muted);font-size:11px;line-height:1.1}
+.card-description{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin:0;color:var(--premium-muted);font-size:13px;line-height:1.5}
+.card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid var(--premium-line)}
+.pickup-time{display:inline-flex;align-items:center;gap:6px;color:#34483b;font-size:12px;font-weight:700;line-height:1.35}
+.stock{padding:5px 9px;border:1px solid rgba(49,93,70,.13);border-radius:999px;background:#eff2e9;color:#34483b;font-size:11px;font-weight:800;white-space:nowrap}
+.card-meta::after{content:'View bundle →';color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}
 
-/* Keep the drawer focused on pickup, ingredients and the order action. */
+/* Give marked-down bundles a noticeable, but still restrained, deal treatment. */
+.listing-card:has(.price del){border-color:rgba(49,93,70,.2)}
+.listing-card:has(.price del) .price strong{color:var(--green);font-size:21px}
+.listing-card:has(.price del) .card-art::after{content:'GOOD VALUE';position:absolute;right:12px;bottom:12px;padding:6px 9px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(255,254,250,.94);color:var(--green);font-size:9px;font-weight:800;letter-spacing:.1em;box-shadow:0 2px 8px rgba(29,41,36,.08)}
+
+/* A concise, scannable product drawer with the purchase action clearly separated. */
 .drawer{max-height:100vh;overflow-y:auto;overscroll-behavior:contain;padding:22px 20px 24px}
 .drawer :is(button,input,textarea,select,a,[tabindex]):focus-visible{outline:3px solid #315d46;outline-offset:3px}
 .close-drawer{min-width:44px;min-height:44px}
 .drawer-shop{margin:12px 0 5px;color:var(--green);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800}
-.drawer-shop b{color:var(--ink)}
-.drawer-title{margin:0 0 9px;font:800 30px/1.08 var(--display);letter-spacing:-.04em}
-.drawer-desc{margin:0 0 14px;color:#626d65;line-height:1.55}
-.detail-box{margin:15px 0 13px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+.drawer-title{margin:0 0 9px;font:800 30px/1.08 'Manrope',var(--display,sans-serif);letter-spacing:-.045em}
+.drawer-desc{margin:0 0 14px;color:var(--premium-muted);line-height:1.55}
+.detail-box{margin:15px 0 13px;padding:12px 14px;border:1px solid var(--premium-line);border-radius:14px;background:var(--premium-paper)}
 .detail-line{display:flex;justify-content:space-between;gap:16px;padding:8px 0}
-.detail-line+.detail-line{border-top:1px solid var(--line)}
-.detail-line span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
-.detail-line b{color:var(--ink);font-size:13px;text-align:right}
+.detail-line+.detail-line{border-top:1px solid var(--premium-line)}
+.detail-line span{color:var(--premium-muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.detail-line b{color:var(--premium-ink);font-size:13px;text-align:right}
 .allergen-note{margin:12px 0 16px;padding:12px 14px;border-left:3px solid var(--orange);border-radius:0 10px 10px 0;background:#f7f3eb;color:#404b45;line-height:1.5;font-size:13px}
 .buy-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0}
-.buy-price{color:var(--ink);font-size:28px;font-weight:800;letter-spacing:-.04em}
-.buy-price small{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:0}
-.quantity{display:inline-flex;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--line);border-radius:999px;background:#f7f6f1}
-.quantity button{width:32px;height:32px;border:0;border-radius:50%;background:#fff;color:var(--ink);font-size:20px;cursor:pointer}
-.quantity span{min-width:18px;text-align:center;font-weight:700}
+.buy-price{color:var(--premium-ink);font-size:28px;font-weight:800;letter-spacing:-.045em}
+.buy-price small{font-size:12px;color:var(--premium-muted);font-weight:700;letter-spacing:0}
+.quantity{display:inline-flex;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--premium-line);border-radius:999px;background:#f7f6f1}
+.quantity button{width:32px;height:32px;border:0;border-radius:50%;background:#fff;color:var(--premium-ink);font-size:20px;cursor:pointer}
 .checkout-wrap{margin-top:17px}
 .demo-checkout{width:100%;min-height:50px;border-radius:10px;font-size:15px;font-weight:800}
-.demo-note{margin-top:8px;text-align:center;color:var(--muted);font-size:12px}
-@media (max-width:520px){
-  .card-art{min-height:128px}
-  .card-body{padding:13px}
-  .card-meta{flex-wrap:wrap}
-  .price strong{font-size:16px}
-  .drawer{padding:18px 16px 22px}
-  .drawer-title{font-size:25px}
-  .buy-price{font-size:25px}
-}
+.demo-note{margin-top:8px;text-align:center;color:var(--premium-muted);font-size:12px}
+@media (max-width:520px){.listing-grid{gap:14px}.card-art{min-height:128px}.card-body{padding:13px}.card-meta{flex-wrap:wrap}.price strong{font-size:16px}.drawer{padding:18px 16px 22px}.drawer-title{font-size:25px}.buy-price{font-size:25px}}
 @media (prefers-reduced-motion:reduce){.listing-card{transition:none}}

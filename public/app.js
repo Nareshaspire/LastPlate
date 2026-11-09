@@ -333,8 +333,8 @@ function generateQRMatrix(text) {
         const nr = r0 + r, nc = c0 + c;
         if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
         const isBlack = (r >= 0 && r <= 6 && (c === 0 || c === 6)) ||
-                        (c >= 0 && c <= 6 && (r === 0 || r === 6)) ||
-                        (r >= 2 && r <= 4 && c >= 2 && c <= 4);
+          (c >= 0 && c <= 6 && (r === 0 || r === 6)) ||
+          (r >= 2 && r <= 4 && c >= 2 && c <= 4);
         setModule(nr, nc, isBlack);
       }
     }
@@ -418,8 +418,8 @@ function generateQRMatrix(text) {
 
   const formatBits = [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0];
   const tlCoords = [
-    [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],
-    [7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]
+    [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7], [8, 8],
+    [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8]
   ];
   for (let i = 0; i < 15; i++) {
     const [r, c] = tlCoords[i];
@@ -533,7 +533,7 @@ function toggleFavoriteShop(shopName, btnEl) {
             body: `We will alert you when ${shopName} drops fresh surprise bags!`,
             icon: '/favicon-32.png'
           });
-        } catch {}
+        } catch { }
       }
     } else {
       notify(`Removed ${shopName} from your drop alerts.`);

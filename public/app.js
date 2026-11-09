@@ -232,6 +232,28 @@ function initOrUpdateMap(listings) {
   }, 250);
 }
 
+/* --- POS Audio Chime Synthesizer --- */
+function playSuccessBeep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.24);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.24);
+  } catch (e) {
+    // audio context muted or restricted by browser policy
+  }
+}
+
 /* --- Camera QR Scanner Controller --- */
 let cameraStream = null;
 let cameraScanning = false;
@@ -259,6 +281,7 @@ async function startCameraScanner(onCodeDetected) {
           if (barcodes && barcodes.length > 0) {
             const rawValue = barcodes[0].rawValue;
             stopCameraScanner();
+            playSuccessBeep();
             onCodeDetected(rawValue);
             return;
           }
@@ -268,9 +291,12 @@ async function startCameraScanner(onCodeDetected) {
         if (cameraScanning) requestAnimationFrame(detectLoop);
       };
       requestAnimationFrame(detectLoop);
+    } else {
+      notify('Tip: Point camera or enter the 4-digit code directly below.');
     }
   } catch (err) {
     notify('Camera notice: ' + (err.message || 'Permission denied'));
+    stopCameraScanner();
   }
 }
 
@@ -457,9 +483,104 @@ function updatePickupsBadge() {
   }
 }
 
+/* --- Drop Alert & Favorite Store System --- */
+function getFavoriteShops() {
+  try {
+    const data = localStorage.getItem('lastplate_favorite_shops');
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+function toggleFavoriteShop(shopName, btnEl) {
+  try {
+    const favs = getFavoriteShops();
+    const idx = favs.indexOf(shopName);
+    let active = false;
+    if (idx >= 0) {
+      favs.splice(idx, 1);
+      active = false;
+    } else {
+      favs.push(shopName);
+      active = true;
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(perm => {
+          if (perm === 'granted') {
+            notify(`🔔 Notifications enabled for ${shopName}!`);
+          }
+        });
+      }
+    }
+    localStorage.setItem('lastplate_favorite_shops', JSON.stringify(favs));
+    updateFavoritesBadge();
+
+    if (btnEl) {
+      btnEl.classList.toggle('active', active);
+      btnEl.setAttribute('aria-pressed', String(active));
+      if (btnEl.classList.contains('save-tag')) {
+        btnEl.innerHTML = active ? '♥' : '♡';
+      } else if (btnEl.id === 'drawer-toggle-alert') {
+        btnEl.innerHTML = `<span>🔔</span> <b>${active ? 'Following for Drop Alerts ✓' : 'Notify me when ' + escapeHTML(shopName) + ' drops surplus'}</b>`;
+      }
+    }
+
+    if (active) {
+      notify(`🔔 Drop Alert Set: You will be notified when ${shopName} adds surplus!`);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('LastPlate Drop Alert Active 🔔', {
+            body: `We will alert you when ${shopName} drops fresh surprise bags!`,
+            icon: '/favicon-32.png'
+          });
+        } catch {}
+      }
+    } else {
+      notify(`Removed ${shopName} from your drop alerts.`);
+    }
+
+    if (state.filter === 'Favorites') {
+      renderListings();
+    }
+  } catch (e) {
+    console.error('Favorite toggle error:', e);
+  }
+}
+window.toggleFavoriteShop = toggleFavoriteShop;
+
+function updateFavoritesBadge() {
+  const badge = document.querySelector('#count-favorites');
+  if (!badge) return;
+  const favs = getFavoriteShops();
+  badge.textContent = favs.length;
+}
+
+function checkActiveDropAlerts() {
+  const favs = getFavoriteShops();
+  if (!favs.length || !state.listings.length) return;
+  const activeMatching = state.listings.filter(l => favs.includes(l.shop) && Number(l.quantity) > 0);
+  if (activeMatching.length > 0) {
+    const uniqueShops = [...new Set(activeMatching.map(l => l.shop))];
+    const dropToastKey = 'lastplate_drop_alert_seen_' + new Date().toDateString();
+    if (!sessionStorage.getItem(dropToastKey)) {
+      sessionStorage.setItem(dropToastKey, 'true');
+      setTimeout(() => {
+        notify(`🔔 Drop Alert: ${uniqueShops.join(', ')} has fresh surplus available right now!`);
+      }, 1500);
+    }
+  }
+}
+
 function renderListings() {
+  const favs = getFavoriteShops();
+  updateFavoritesBadge();
   const filtered = state.listings.filter((listing) => {
-    const catMatch = state.filter === 'All' || listing.category.toLowerCase() === state.filter.toLowerCase();
+    let catMatch = true;
+    if (state.filter === 'Favorites') {
+      catMatch = favs.includes(listing.shop);
+    } else if (state.filter !== 'All') {
+      catMatch = listing.category.toLowerCase() === state.filter.toLowerCase();
+    }
     const dietMatch = state.dietary === 'all' || (Array.isArray(listing.dietary) && listing.dietary.includes(state.dietary));
     return catMatch && dietMatch;
   });
@@ -499,7 +620,7 @@ function renderListings() {
         </div>
         <span class="card-emoji card-emoji-fallback" aria-hidden="true">${escapeHTML(listing.image || '🥖')}</span>
         <button class="card-share-btn" type="button" aria-label="Share find" onclick="event.stopPropagation(); shareListing('${listing.id}');">🔗</button>
-        <button class="save-tag" type="button" aria-label="Save to favourites" onclick="event.stopPropagation(); this.classList.toggle('active');">♡</button>
+        <button class="save-tag ${favs.includes(listing.shop) ? 'active' : ''}" type="button" aria-label="Drop alert for ${escapeHTML(listing.shop)}" title="Get Drop Alerts for ${escapeHTML(listing.shop)}" onclick="event.stopPropagation(); toggleFavoriteShop('${escapeHTML(listing.shop).replace(/'/g, "\\'")}', this);">${favs.includes(listing.shop) ? '♥' : '♡'}</button>
         <div class="card-bottom-tags">
           <span class="distance-pill">📍 ${escapeHTML(listing.distance || 'Downtown')}</span>
         </div>
@@ -555,6 +676,8 @@ function openListing(id) {
   const isDemo = !state.config?.paypalConfigured;
   const isUrgent = Number(listing.quantity) <= 2;
   const discount = listing.discountPercent || 0;
+  const favs = getFavoriteShops();
+  const isFav = favs.includes(listing.shop);
   const checkout = isDemo
     ? `<div class="checkout-wrap"><button class="demo-checkout" id="demo-checkout">Reserve for pickup</button><p class="demo-note"><span class="demo-badge">Demo only</span> No payment is taken in demo mode.</p></div>`
     : `<div class="checkout-wrap"><div id="paypal-buttons" class="paypal-area"></div><p class="demo-note">PayPal sandbox · no real money</p></div>`;
@@ -568,6 +691,11 @@ function openListing(id) {
     <div class="drawer-header-meta">
       <span class="drawer-shop-badge">🏪 <b>${escapeHTML(listing.shop)}</b></span>
       <span class="drawer-rating-badge">★ ${listing.rating || '4.9'} (${listing.reviews || '42'} reviews)</span>
+    </div>
+    <div class="drawer-alert-row">
+      <button type="button" class="drawer-alert-btn ${isFav ? 'active' : ''}" id="drawer-toggle-alert">
+        <span>🔔</span> <b>${isFav ? 'Following for Drop Alerts ✓' : 'Notify me when ' + escapeHTML(listing.shop) + ' drops surplus'}</b>
+      </button>
     </div>
     <h2 class="drawer-title" id="drawer-title">${escapeHTML(listing.title)}</h2>
     <p class="drawer-desc">${escapeHTML(listing.description)}</p>
@@ -600,6 +728,12 @@ function openListing(id) {
     </div>
     ${checkout}`;
   openDrawer();
+  document.querySelector('#drawer-toggle-alert')?.addEventListener('click', (e) => {
+    toggleFavoriteShop(listing.shop, e.currentTarget);
+  });
+  document.querySelector('#drawer-share-find')?.addEventListener('click', () => {
+    shareListing(listing.id);
+  });
   const updateQuantity = (next) => {
     state.quantity = Math.max(1, Math.min(listing.quantity, next));
     document.querySelector('#quantity-count').textContent = state.quantity;
@@ -890,7 +1024,11 @@ async function renderSellerDashboard(user) {
 
     drawerContent.innerHTML = `<section class="seller-dashboard">
       <div class="seller-dashboard-head"><div><div class="eyebrow"><span class="eyebrow-dot"></span> SHOP DASHBOARD</div><h2>${escapeHTML(user?.name || 'Your shop')}</h2><p>${activeCount} active listing${activeCount === 1 ? '' : 's'} · ${pendingCount} pickup${pendingCount === 1 ? '' : 's'} to prepare</p></div>
-        <div class="seller-dashboard-actions"><button id="dashboard-add-listing" type="button">＋ Add listing</button><button id="seller-logout" type="button">Sign out</button></div>
+        <div class="seller-dashboard-actions">
+          <button id="dashboard-add-listing" type="button">＋ Add listing</button>
+          <a href="/flyer.html" target="_blank" rel="noopener" class="seller-kit-btn" title="Print Counter Table Tent & Kit">📄 Counter Kit</a>
+          <button id="seller-logout" type="button">Sign out</button>
+        </div>
       </div>
 
       <div class="seller-revenue-card">
@@ -910,8 +1048,13 @@ async function renderSellerDashboard(user) {
 
       <div class="seller-verify-card">
         <div class="seller-verify-head">
-          <h4>Counter Pickup Verification</h4>
-          <p>Customer at the counter? Verify their pickup code to complete hand-off:</p>
+          <div class="seller-verify-title-row">
+            <h4>Counter Pickup Verification</h4>
+            <button type="button" class="button-scanner-action" id="scan-qr-btn">
+              📷 <span>Scan Camera Pass</span>
+            </button>
+          </div>
+          <p>Scan buyer's QR code pass or enter their 4-digit code to complete hand-off:</p>
         </div>
         <form id="seller-verify-form" class="seller-verify-form">
           <input id="verify-input" class="form-control" placeholder="Enter code, e.g. LP-NDNJA" maxlength="16" autocomplete="off" required>
@@ -959,11 +1102,13 @@ async function renderSellerDashboard(user) {
         feedback.className = 'verify-feedback hidden';
         try {
           const res = await api('/api/seller/orders/verify', { pickupCode: code });
+          playSuccessBeep();
+          confetti();
           feedback.className = 'verify-feedback success';
           feedback.innerHTML = `<b>✓ Verified:</b> ${escapeHTML(res.message)}`;
           input.value = '';
           notify('Pickup verified successfully!');
-          await renderSellerDashboard(user);
+          setTimeout(() => renderSellerDashboard(user), 1600);
         } catch (err) {
           feedback.className = 'verify-feedback error';
           feedback.innerHTML = `<b>✕ Not Verified:</b> ${escapeHTML(err.message)}`;
@@ -1129,7 +1274,9 @@ async function init() {
     state.config = await api('/api/config');
     if (!state.config.aiConfigured) document.querySelector('.ai-discovery-copy span').textContent = 'Preview only: add an OpenAI API key to enable live matching.';
     updatePickupsBadge();
+    updateFavoritesBadge();
     await refreshListings();
+    checkActiveDropAlerts();
     if (window.location.hash === '#about') renderAboutUs();
   } catch (error) { notify(error.message); }
 }

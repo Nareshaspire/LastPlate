@@ -1997,6 +1997,125 @@ footer {
   margin-bottom: 26px;
 }
 
+.seller-verify-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.button-scanner-action {
+  background: var(--green);
+  color: #fff;
+  border: 0;
+  border-radius: var(--radius-xs);
+  padding: 8px 14px;
+  font: 700 13px var(--sans);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(49, 93, 70, 0.25);
+  transition: all 0.15s ease;
+}
+
+.button-scanner-action:hover {
+  background: var(--green-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(49, 93, 70, 0.35);
+}
+
+.button-scanner-action:active {
+  transform: scale(0.97);
+}
+
+.seller-kit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 13.5px var(--sans);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.seller-kit-btn:hover {
+  border-color: var(--green);
+  background: #f7f9f4;
+  color: var(--green);
+  transform: translateY(-1px);
+}
+
+.alert-count-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eef2eb;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--green);
+  margin-left: 4px;
+}
+
+.filter.active .alert-count-pill {
+  background: #fff;
+  color: var(--green);
+}
+
+.drawer-alert-row {
+  margin: 10px 0 14px;
+}
+
+.drawer-alert-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  border: 1px dashed var(--line);
+  background: #fdfcf9;
+  color: var(--muted);
+  font: 600 13.5px var(--sans);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.drawer-alert-btn:hover {
+  border-color: var(--green);
+  background: #f3f7f2;
+  color: var(--green);
+}
+
+.drawer-alert-btn.active {
+  background: #eaf2eb;
+  border: 1px solid #c2dbb5;
+  color: var(--green-dark);
+  font-weight: 700;
+}
+
+.join-btns-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.join-btns-row .button-outline {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px;
+  font-size: 14.5px;
+}
+
 .seller-verify-head h4 {
   margin: 0 0 4px;
   font: 700 17px var(--display);

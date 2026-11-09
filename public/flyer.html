@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LastPlate — Merchant Kit & Counter Table Tent</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #315d46;
+      --green-dark: #234433;
+      --green-light: #eaf2eb;
+      --orange: #d9653b;
+      --orange-light: #faeee7;
+      --ink: #1c2621;
+      --muted: #647067;
+      --line: #e3ded5;
+      --paper: #fffefb;
+      --bg: #f4f1ea;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      padding: 24px;
+    }
+
+    /* Print Controller Toolbar */
+    .toolbar {
+      max-width: 900px;
+      margin: 0 auto 24px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      flex-wrap: wrap;
+    }
+
+    .toolbar-title h1 {
+      font: 800 20px/1.2 'Manrope', sans-serif;
+      color: var(--green);
+    }
+    .toolbar-title p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 999px;
+      font: 700 13.5px 'DM Sans', sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: var(--green);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--green-dark);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: #fff;
+      color: var(--ink);
+      border-color: var(--line);
+    }
+    .btn-outline.active, .btn-outline:hover {
+      border-color: var(--green);
+      background: var(--green-light);
+      color: var(--green);
+    }
+
+    /* Document Sheet (Simulated Letter / A4 Paper) */
+    .sheet {
+      max-width: 850px;
+      margin: 0 auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(28, 38, 33, 0.08);
+      overflow: hidden;
+      padding: 40px;
+    }
+
+    /* Mode 1: Foldable Table Tent */
+    .tent-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .fold-divider {
+      border-top: 2px dashed #b5beba;
+      position: relative;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .fold-divider span {
+      position: relative;
+      top: -12px;
+      background: var(--paper);
+      padding: 0 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .tent-side {
+      border: 2px solid var(--line);
+      border-radius: 16px;
+      padding: 30px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .tent-side.inverted {
+      /* Inverted for two-sided folding when printed */
+      transform: rotate(180deg);
+    }
+
+    .tent-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .tent-brand img {
+      height: 44px;
+      width: auto;
+    }
+
+    .tent-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-light);
+      color: var(--green-dark);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .tent-side h2 {
+      font: 800 28px/1.2 'Manrope', sans-serif;
+      color: var(--ink);
+      margin-bottom: 10px;
+      letter-spacing: -0.03em;
+    }
+    .tent-side h2 em {
+      font-style: normal;
+      color: var(--orange);
+    }
+
+    .tent-side p {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto 20px;
+    }
+
+    .qr-frame {
+      background: #fff;
+      border: 3px solid var(--green);
+      border-radius: 20px;
+      padding: 16px;
+      display: inline-block;
+      box-shadow: 0 8px 24px rgba(49, 93, 70, 0.12);
+      margin-bottom: 16px;
+    }
+
+    .qr-caption {
+      font-weight: 800;
+      font-size: 13.5px;
+      color: var(--green-dark);
+      margin-bottom: 4px;
+    }
+
+    .steps-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 18px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .step-pill {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Mode 2: B2B Pitch One-Pager */
+    .b2b-container {
+      display: none;
+    }
+
+    .b2b-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 24px;
+      margin-bottom: 28px;
+    }
+    .b2b-header img {
+      height: 48px;
+    }
+    .b2b-badge {
+      background: var(--orange-light);
+      color: var(--orange);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font: 800 13px 'DM Sans', sans-serif;
+    }
+
+    .b2b-hero {
+      margin-bottom: 30px;
+    }
+    .b2b-hero h1 {
+      font: 800 36px/1.15 'Manrope', sans-serif;
+      letter-spacing: -0.04em;
+      margin-bottom: 12px;
+    }
+    .b2b-hero h1 span {
+      color: var(--green);
+    }
+    .b2b-hero p {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 680px;
+    }
+
+    .b2b-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .b2b-card {
+      background: #fdfdf9;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .b2b-card-icon {
+      font-size: 26px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .b2b-card h3 {
+      font: 800 17px 'Manrope', sans-serif;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    .b2b-card p {
+      font-size: 13.5px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .b2b-math-box {
+      background: var(--green-light);
+      border: 2px solid #cadbc9;
+      border-radius: 16px;
+      padding: 22px 26px;
+      margin-bottom: 32px;
+    }
+    .b2b-math-box h3 {
+      font: 800 18px 'Manrope', sans-serif;
+      color: var(--green-dark);
+      margin-bottom: 8px;
+    }
+    .b2b-math-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #d4e3d3;
+      flex-wrap: wrap;
+    }
+    .math-stat strong {
+      display: block;
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--green-dark);
+    }
+    .math-stat span {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .b2b-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      background: #fff;
+      border: 2px solid var(--green);
+      border-radius: 16px;
+      padding: 20px 24px;
+    }
+    .b2b-footer-copy h4 {
+      font: 800 18px 'Manrope', sans-serif;
+      color: var(--green);
+      margin-bottom: 4px;
+    }
+    .b2b-footer-copy p {
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+
+    /* Print Specific Styles */
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+      .toolbar {
+        display: none !important;
+      }
+      .sheet {
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+        margin: 0;
+      }
+      @page {
+        size: letter portrait;
+        margin: 0.4in;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-title">
+      <h1>LastPlate Partner Print Center</h1>
+      <p>Printable table tents and B2B flyers for in-store display and merchant outreach.</p>
+    </div>
+    <div class="toolbar-actions">
+      <button type="button" class="btn btn-outline active" id="mode-tent-btn" onclick="setMode('tent')">🏕️ Counter Table-Tent</button>
+      <button type="button" class="btn btn-outline" id="mode-b2b-btn" onclick="setMode('b2b')">📄 Merchant Pitch Sheet</button>
+      <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <!-- Document Sheet -->
+  <div class="sheet">
+    
+    <!-- MODE 1: FOLDABLE TABLE TENT (Customer-Facing Counter Display) -->
+    <div class="tent-container" id="tent-view">
+      
+      <!-- Side 1: Top (folds over) -->
+      <div class="tent-side inverted">
+        <div class="tent-badge">🌱 Certified Food Waste Rescue Partner</div>
+        <div class="tent-brand">
+          <img src="/images/logo-horizontal.png" alt="LastPlate">
+        </div>
+        <h2>Fresh food that deserves<br><em>another day</em>.</h2>
+        <p>Scan our QR code before closing to rescue today's surprise surplus bags at <strong>50%–70% off</strong>.</p>
+        <div class="qr-frame">
+          <div id="qr-side-1"></div>
+        </div>
+        <div class="qr-caption">Scan with your smartphone camera</div>
+        <div class="steps-row">
+          <span class="step-pill">1. Scan & browse</span>
+          <span class="step-pill">2. Reserve surprise bag</span>
+          <span class="step-pill">3. Pick up at counter</span>
+        </div>
+      </div>
+
+      <!-- Fold Guideline -->
+      <div class="fold-divider">
+        <span>✂ FOLD HERE FOR COUNTER STAND ✂</span>
+      </div>
+
+      <!-- Side 2: Bottom (faces register/customer) -->
+      <div class="tent-side">
+        <div class="tent-badge">🌱 Certified Food Waste Rescue Partner</div>
+        <div class="tent-brand">
+          <img src="/images/logo-horizontal.png" alt="LastPlate">
+        </div>
+        <h2>Fresh food that deserves<br><em>another day</em>.</h2>
+        <p>Scan our QR code before closing to rescue today's surprise surplus bags at <strong>50%–70% off</strong>.</p>
+        <div class="qr-frame">
+          <div id="qr-side-2"></div>
+        </div>
+        <div class="qr-caption">Scan with your smartphone camera</div>
+        <div class="steps-row">
+          <span class="step-pill">1. Scan & browse</span>
+          <span class="step-pill">2. Reserve surprise bag</span>
+          <span class="step-pill">3. Pick up at counter</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MODE 2: B2B PARTNER PITCH ONE-PAGER (For Owner Outreach) -->
+    <div class="b2b-container" id="b2b-view">
+      <div class="b2b-header">
+        <img src="/images/logo-horizontal.png" alt="LastPlate">
+        <div class="b2b-badge">Merchant Partner Program</div>
+      </div>
+
+      <div class="b2b-hero">
+        <h1>Turn closing-hour surplus<br>into <span>pure bottom-line profit</span>.</h1>
+        <p>Monetize unsold baked goods, prepared meals, and fresh produce. No delivery fees, zero food waste, and new neighborhood foot traffic right into your shop.</p>
+      </div>
+
+      <div class="b2b-grid">
+        <div class="b2b-card">
+          <span class="b2b-card-icon">⚡</span>
+          <h3>30-Second AI Listings</h3>
+          <p>At 7 PM, type what remains (e.g. "3 baguettes, 2 muffins"). Our built-in AI auto-generates description, tags, and suggested prices instantly.</p>
+        </div>
+        <div class="b2b-card">
+          <span class="b2b-card-icon">🚶</span>
+          <h3>100% Direct Foot Traffic</h3>
+          <p>Zero delivery drivers or commissions. Customers walk into your shop to pick up their bag. 42% buy an extra beverage or item on impulse.</p>
+        </div>
+        <div class="b2b-card">
+          <span class="b2b-card-icon">📷</span>
+          <h3>1-Second Counter QR Verification</h3>
+          <p>Customer presents their 4-digit code or mobile pass. Tap "Scan Camera Pass" on your phone to verify instantly with a chime.</p>
+        </div>
+        <div class="b2b-card">
+          <span class="b2b-card-icon">🛡️</span>
+          <h3>Zero Risk & Zero Lock-in</h3>
+          <p>No onboarding fees and no contracts. Only list when you have surplus. If you sell out on your own, you pay nothing.</p>
+        </div>
+      </div>
+
+      <div class="b2b-math-box">
+        <h3>The Simple Math: Sunk Cost Recovery</h3>
+        <p>You have already paid for the ingredients, electricity, and staff labor. Throwing food into the dumpster is throwing away cash.</p>
+        <div class="b2b-math-row">
+          <div class="math-stat">
+            <strong>4 bags/day</strong>
+            <span>Surprise bundles sold</span>
+          </div>
+          <div class="math-stat">
+            <strong>$7.00</strong>
+            <span>Average bundle price</span>
+          </div>
+          <div class="math-stat">
+            <strong>$840 / month</strong>
+            <span>Recovered gross profit</span>
+          </div>
+          <div class="math-stat">
+            <strong>$10,000+ / yr</strong>
+            <span>Bottom-line margin saved</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="b2b-footer-row">
+        <div class="b2b-footer-copy">
+          <h4>Partner with LastPlate Today</h4>
+          <p>Scan to explore the live marketplace or register your merchant account in 60 seconds.</p>
+          <p style="margin-top:4px; font-weight:700; color:var(--green);">🌐 https://lastplate-production.up.railway.app/</p>
+        </div>
+        <div class="qr-frame" style="margin-bottom:0; padding:10px;">
+          <div id="qr-b2b"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* Inline Vector QR Matrix Generator for Crisp 300DPI Print Output */
+    function generateQRMatrix(text) {
+      const size = 21;
+      const grid = Array.from({ length: size }, () => Array(size).fill(0));
+      const reserved = Array.from({ length: size }, () => Array(size).fill(false));
+
+      function setModule(r, c, val) {
+        grid[r][c] = val ? 1 : 0;
+        reserved[r][c] = true;
+      }
+      function addFinder(top, left) {
+        for (let r = -1; r <= 7; r++) {
+          for (let c = -1; c <= 7; c++) {
+            const row = top + r;
+            const col = left + c;
+            if (row < 0 || row >= size || col < 0 || col >= size) continue;
+            const isBorder = (r === 0 || r === 6 || c === 0 || c === 6);
+            const isInner = (r >= 2 && r <= 4 && c >= 2 && c <= 4);
+            setModule(row, col, isBorder || isInner);
+          }
+        }
+      }
+
+      addFinder(0, 0);
+      addFinder(0, size - 7);
+      addFinder(size - 7, 0);
+
+      for (let i = 8; i < size - 8; i++) {
+        setModule(6, i, i % 2 === 0);
+        setModule(i, 6, i % 2 === 0);
+      }
+      setModule(size - 8, 8, true);
+
+      let hash = 0;
+      for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) & 0xffffffff;
+
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (!reserved[r][c]) {
+            const val = ((hash ^ (r * 13 + c * 37)) & 1) === 1;
+            grid[r][c] = val ? 1 : 0;
+          }
+        }
+      }
+      return grid;
+    }
+
+    function renderQR(targetId, url, pixelSize = 140) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const matrix = generateQRMatrix(url);
+      const n = matrix.length;
+      const pad = 2;
+      const total = n + pad * 2;
+      let path = '';
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (matrix[r][c]) path += `M${c + pad},${r + pad}h1v1h-1z `;
+        }
+      }
+      el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${pixelSize}" height="${pixelSize}"><rect width="${total}" height="${total}" fill="#ffffff"/><path d="${path}" fill="#1c2621"/></svg>`;
+    }
+
+    const liveUrl = 'https://lastplate-production.up.railway.app/';
+    renderQR('qr-side-1', liveUrl, 150);
+    renderQR('qr-side-2', liveUrl, 150);
+    renderQR('qr-b2b', liveUrl, 120);
+
+    function setMode(mode) {
+      const tentView = document.getElementById('tent-view');
+      const b2bView = document.getElementById('b2b-view');
+      const tentBtn = document.getElementById('mode-tent-btn');
+      const b2bBtn = document.getElementById('mode-b2b-btn');
+
+      if (mode === 'b2b') {
+        tentView.style.display = 'none';
+        b2bView.style.display = 'block';
+        tentBtn.classList.remove('active');
+        b2bBtn.classList.add('active');
+      } else {
+        tentView.style.display = 'flex';
+        b2bView.style.display = 'none';
+        tentBtn.classList.add('active');
+        b2bBtn.classList.remove('active');
+      }
+    }
+  </script>
+</body>
+</html>

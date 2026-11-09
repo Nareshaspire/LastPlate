@@ -83,3 +83,4 @@ A structured, conversational pitch script tailored for local bakery owners, cafe
 | **"What if on some days I have zero food left over?"** | *"That’s great news! You only create a listing on days you actually have surplus. If you sell out at 5 PM, you do nothing. You have 100% control every day."* |
 | **"Do we have to deliver the food?"** | *"Never. LastPlate is 100% customer pickup. Customers walk into your shop to pick up their order, which saves you delivery fees and brings physical foot traffic."* |
 | **"What packaging do we need?"** | *"Whatever paper bags or boxes you already use for takeaway orders. No special packaging required."* |
+

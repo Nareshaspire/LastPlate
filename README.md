@@ -1,6 +1,8 @@
-# LastPlate
+# LastPlate 🌿
 
-A local, AI-assisted surplus-food marketplace for neighbourhood shops. Sellers can publish end-of-day bundles, shoppers can search in plain language, and the app supports a PayPal Sandbox checkout flow for pickup orders.
+> **Live Application:** [lastplate-production.up.railway.app](https://lastplate-production.up.railway.app/)
+
+A hyper-local, AI-assisted surplus-food marketplace connecting neighborhood bakeries, cafes, and markets with local eaters to rescue unsold fresh food at up to 70% off.
 
 ## What the app does
 

@@ -1,0 +1,24 @@
+{
+  "name": "LastPlate — Good Food, Found Before Closing",
+  "short_name": "LastPlate",
+  "description": "Rescue fresh surplus food from your favourite local bakeries and cafés before closing time.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f6f1",
+  "theme_color": "#29503b",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/logo-icon.png",
+      "sizes": "480x480",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

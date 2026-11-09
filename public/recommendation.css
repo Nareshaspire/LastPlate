@@ -1,1 +1,20 @@
-.ai-match-reason{margin-top:10px;padding:8px 9px;border-radius:4px;background:#f0f3e9;color:#5d7355;font-size:9px;line-height:1.5}.ai-match-reason span{color:#8da077;margin-right:4px}
+/* Recommendation AI Reason Styling — Meta Luxury UI */
+.ai-match-reason {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  background: #ecf3e6;
+  border: 1px solid #d7e4d0;
+  color: #2f4a2d;
+  font-size: 13.5px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-match-reason span {
+  color: var(--green);
+  font-size: 16px;
+  flex-shrink: 0;
+}

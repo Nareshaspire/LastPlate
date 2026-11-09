@@ -81,3 +81,4 @@ Deploy LastPlate globally using our production multi-stage [`Dockerfile`](file:/
 - [ ] Click **Reserve** on a meal and verify you get an instant 4-digit pickup pass.
 - [ ] Visit **My Pickups** and test the **Add to Phone Pass** (PWA offline pass).
 - [ ] Visit the **Seller Dashboard** and test listing creation or AI draft assistant.
+

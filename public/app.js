@@ -32,7 +32,7 @@ if ('serviceWorker' in navigator && window.location.protocol.startsWith('http'))
   });
 }
 
-const state = { listings: [], filter: 'All', dietary: 'all', view: 'grid', config: null, selected: null, quantity: 1, paypalLoaded: false, recommendations: [] };
+const state = { listings: [], filter: 'All', dietary: 'all', view: 'grid', config: null, selected: null, quantity: 1, paypalLoaded: false, recommendations: [], userLocation: null };
 const grid = document.querySelector('#listing-grid');
 const overlay = document.querySelector('#overlay');
 const drawerContent = document.querySelector('#drawer-content');
@@ -41,6 +41,182 @@ let toastTimer;
 
 const escapeHTML = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const money = (amount) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: state.config?.currency || 'USD', maximumFractionDigits: 0 }).format(Number(amount || 0));
+
+function haversineKm(startLat, startLng, endLat, endLng) {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const deltaLat = toRad(endLat - startLat);
+  const deltaLng = toRad(endLng - startLng);
+  const lat1 = toRad(startLat);
+  const lat2 = toRad(endLat);
+  const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistanceText(km) {
+  if (!Number.isFinite(km)) return 'Distance unavailable';
+  if (km < 1) return `${Math.round(km * 1000)} m away`;
+  if (km < 10) return `${km.toFixed(1)} km away`;
+  return `${km.toFixed(0)} km away`;
+}
+
+function getDistanceForListing(listing) {
+  if (!state.userLocation || !Number.isFinite(Number(listing?.lat)) || !Number.isFinite(Number(listing?.lng))) return null;
+  return haversineKm(state.userLocation.lat, state.userLocation.lng, Number(listing.lat), Number(listing.lng));
+}
+
+function applyDistanceMetadata(items) {
+  if (!state.userLocation) return items.map((listing) => ({ ...listing, distanceKm: null, distance: 'Distance unavailable' }));
+  return items.map((listing) => {
+    const distanceKm = getDistanceForListing(listing);
+    return {
+      ...listing,
+      distanceKm,
+      distance: distanceKm === null ? 'Distance unavailable' : formatDistanceText(distanceKm)
+    };
+  });
+}
+
+function sortByDistance(items) {
+  if (!state.userLocation) return items;
+  return [...items].sort((a, b) => {
+    const distanceA = getDistanceForListing(a);
+    const distanceB = getDistanceForListing(b);
+    if (distanceA == null && distanceB == null) return 0;
+    if (distanceA == null) return 1;
+    if (distanceB == null) return -1;
+    return distanceA - distanceB;
+  });
+}
+
+const postalCodeLookup = {
+  M5V: { lat: 43.6407, lng: -79.3886, label: 'Toronto (M5V)' },
+  M5R: { lat: 43.6704, lng: -79.3924, label: 'Toronto (M5R)' },
+  M5T: { lat: 43.6506, lng: -79.3965, label: 'Toronto (M5T)' },
+  M5S: { lat: 43.6629, lng: -79.3983, label: 'Toronto (M5S)' },
+  M5B: { lat: 43.6572, lng: -79.3791, label: 'Toronto (M5B)' },
+  M6G: { lat: 43.6652, lng: -79.4291, label: 'Toronto (M6G)' },
+  M4Y: { lat: 43.6625, lng: -79.3839, label: 'Toronto (M4Y)' },
+  M4B: { lat: 43.7086, lng: -79.3120, label: 'Toronto (M4B)' },
+  M5A: { lat: 43.6509, lng: -79.3841, label: 'Toronto (M5A)' },
+  M5C: { lat: 43.6527, lng: -79.3750, label: 'Toronto (M5C)' },
+  M5E: { lat: 43.6463, lng: -79.3730, label: 'Toronto (M5E)' },
+  M5H: { lat: 43.6498, lng: -79.3829, label: 'Toronto (M5H)' },
+  M5J: { lat: 43.6413, lng: -79.3894, label: 'Toronto (M5J)' }
+};
+
+function normalizePostalCode(value) {
+  const cleaned = String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!cleaned) return null;
+  if (/^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(cleaned)) return cleaned;
+  if (/^[A-Z]\d[A-Z]\s*\d[A-Z]\d$/.test(cleaned.replace(/\s+/g, ''))) return cleaned.replace(/\s+/g, '');
+  return null;
+}
+
+function resolvePostalCodeLocation(input) {
+  const cleaned = normalizePostalCode(input);
+  if (!cleaned) return null;
+  const prefix = cleaned.slice(0, 3);
+  const anchor = postalCodeLookup[prefix] || {
+    lat: 43.6532 + ((prefix.charCodeAt(0) - 65) / 18) * 0.14,
+    lng: -79.3832 + (((prefix.charCodeAt(1) % 5) - 2) * 0.12),
+    label: `Toronto (${prefix})`
+  };
+  return { ...anchor, label: anchor.label || `Toronto (${prefix})`, source: 'postal-code' };
+}
+
+function setUserLocation(location, { persist = true } = {}) {
+  state.userLocation = location ? { lat: Number(location.lat), lng: Number(location.lng), label: location.label || 'My location', source: location.source || 'manual' } : null;
+  if (persist) {
+    try {
+      if (state.userLocation) localStorage.setItem('lastplate_user_location', JSON.stringify(state.userLocation));
+      else localStorage.removeItem('lastplate_user_location');
+    } catch (error) {
+      console.warn('Could not persist user location:', error);
+    }
+  }
+  updateLocationPill();
+}
+
+function loadUserLocation() {
+  try {
+    const saved = localStorage.getItem('lastplate_user_location');
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (parsed && Number.isFinite(Number(parsed.lat)) && Number.isFinite(Number(parsed.lng))) {
+      state.userLocation = { ...parsed, source: parsed.source || 'saved' };
+    }
+  } catch (error) {
+    console.warn('Could not restore user location:', error);
+  }
+  updateLocationPill();
+}
+
+function toggleLocationMenu(forceOpen) {
+  const menu = document.querySelector('#location-menu');
+  const pill = document.querySelector('#location-pill-button');
+  if (!menu || !pill) return;
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !shouldOpen);
+  pill.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+}
+
+function updateLocationPill() {
+  const label = document.querySelector('#location-pill-label');
+  if (!label) return;
+  if (state.userLocation) {
+    label.textContent = state.userLocation.label || 'My location';
+  } else {
+    label.textContent = 'Use my location';
+  }
+}
+
+function clearLocation() {
+  setUserLocation(null);
+  toggleLocationMenu(false);
+  renderListings();
+}
+
+function requestUserLocation() {
+  const geolocationSupported = 'geolocation' in navigator;
+  if (!geolocationSupported) {
+    notify('This browser cannot access your location. Try a postal code instead.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      const location = {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        label: 'My current location',
+        source: 'browser'
+      };
+      setUserLocation(location);
+      toggleLocationMenu(false);
+      renderListings();
+      notify('Using your current location to sort nearby finds.');
+    },
+    () => {
+      notify('Location access was denied. Try a postal code or select a city manually.');
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+function applyPostalCodeLocation() {
+  const input = document.querySelector('#postal-code-input');
+  if (!input) return;
+  const value = input.value.trim();
+  const location = resolvePostalCodeLocation(value);
+  if (!location) {
+    notify('Please enter a valid postal code like M5V 2T6.');
+    return;
+  }
+  setUserLocation({ lat: location.lat, lng: location.lng, label: location.label, source: 'postal-code' });
+  toggleLocationMenu(false);
+  renderListings();
+  notify(`Showing nearby results for ${location.label}.`);
+}
 
 async function api(path, body, method = body ? 'POST' : 'GET') {
   const options = { method };
@@ -443,7 +619,7 @@ function renderQRCodeSVG(text, size = 130) {
         if (matrix[r][c]) paths += `M${c + padding},${r + padding}h1v1h-1z `;
       }
     }
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${size}" height="${size}" class="ticket-qr-svg" role="img" aria-label="QR Code"><rect width="${total}" height="${total}" fill="#fff" rx="2"/><path d="${paths}" fill="#1d2924"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${size}" height="${size}" class="ticket-qr-svg" role="img" aria-label="QR Code"><rect width="${total}" height="${total}" fill="#fff"/><path d="${paths}" fill="#1d2b22"/></svg>`;
   } catch {
     return '';
   }
@@ -585,9 +761,16 @@ function renderListings() {
     return catMatch && dietMatch;
   });
   const matches = new Map(state.recommendations.map((item) => [String(item.listingId), item.reason]));
-  const visible = state.recommendations.length
+  let visible = state.recommendations.length
     ? state.recommendations.map((item) => state.listings.find((listing) => String(listing.id) === String(item.listingId))).filter(Boolean)
     : filtered;
+
+  if (state.userLocation) {
+    visible = sortByDistance(applyDistanceMetadata(visible));
+  } else {
+    visible = applyDistanceMetadata(visible);
+  }
+
   document.querySelector('#count-all').textContent = state.listings.length;
   document.querySelector('#empty-state').classList.toggle('hidden', visible.length > 0);
 
@@ -609,6 +792,7 @@ function renderListings() {
     const isUrgent = Number(listing.quantity) <= 2;
     const discount = listing.discountPercent || 0;
     const countdown = getCountdownBadge(listing.pickupBy);
+    const distanceText = state.userLocation ? `📍 ${escapeHTML(listing.distance || 'Distance unavailable')}` : '📍 ' + escapeHTML(listing.distance || 'Distance unavailable');
     return `<article class="listing-card" data-id="${escapeHTML(listing.id)}" tabindex="0" role="button" aria-label="View ${escapeHTML(listing.title)}">
       <div class="card-art ${categoryClass}">
         ${listing.imageUrl ? `<img class="card-photo" src="${escapeHTML(listing.imageUrl)}" alt="${escapeHTML(listing.title)}" loading="lazy" onerror="this.style.display='none';" />` : ''}
@@ -620,9 +804,9 @@ function renderListings() {
         </div>
         <span class="card-emoji card-emoji-fallback" aria-hidden="true">${escapeHTML(listing.image || '🥖')}</span>
         <button class="card-share-btn" type="button" aria-label="Share find" onclick="event.stopPropagation(); shareListing('${listing.id}');">🔗</button>
-        <button class="save-tag ${favs.includes(listing.shop) ? 'active' : ''}" type="button" aria-label="Drop alert for ${escapeHTML(listing.shop)}" title="Get Drop Alerts for ${escapeHTML(listing.shop)}" onclick="event.stopPropagation(); toggleFavoriteShop('${escapeHTML(listing.shop).replace(/'/g, "\\'")}', this);">${favs.includes(listing.shop) ? '♥' : '♡'}</button>
+        <button class="save-tag ${favs.includes(listing.shop) ? 'active' : ''}" type="button" aria-label="Drop alert for ${escapeHTML(listing.shop)}" title="Get Drop Alerts for ${escapeHTML(listing.shop)}" onclick="event.stopPropagation(); toggleFavoriteShop('${escapeHTML(listing.shop)}', this);">${favs.includes(listing.shop) ? '♥' : '♡'}</button>
         <div class="card-bottom-tags">
-          <span class="distance-pill">📍 ${escapeHTML(listing.distance || 'Downtown')}</span>
+          <span class="distance-pill">${distanceText}</span>
         </div>
       </div>
       <div class="card-body">
@@ -679,12 +863,12 @@ function openListing(id) {
   const favs = getFavoriteShops();
   const isFav = favs.includes(listing.shop);
   const checkout = isDemo
-    ? `<div class="checkout-wrap"><button class="demo-checkout" id="demo-checkout">Reserve for pickup</button><p class="demo-note"><span class="demo-badge">Demo only</span> No payment is taken in demo mode.</p></div>`
+    ? `<div class="checkout-wrap"><button class="demo-checkout" id="demo-checkout">Reserve for pickup</button><p class="demo-note"><span class="demo-badge">Demo only</span> No payment is taken in this demo flow.</p></div>`
     : `<div class="checkout-wrap"><div id="paypal-buttons" class="paypal-area"></div><p class="demo-note">PayPal sandbox · no real money</p></div>`;
 
   drawerContent.innerHTML = `
     <div class="drawer-art">
-      ${listing.imageUrl ? `<img class="drawer-photo" src="${escapeHTML(listing.imageUrl)}" alt="${escapeHTML(listing.title)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />` : ''}
+      ${listing.imageUrl ? `<img class="drawer-photo" src="${escapeHTML(listing.imageUrl)}" alt="${escapeHTML(listing.title)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : ''}
       <div class="drawer-emoji-fallback" style="${listing.imageUrl ? 'display:none;' : ''}"><span>${escapeHTML(listing.image || '🥖')}</span></div>
       ${discount > 0 ? `<span class="drawer-discount-tag">Save ${discount}%</span>` : ''}
     </div>
@@ -785,7 +969,6 @@ async function showSuccess(result, demo) {
       <span class="demo-badge">${demo ? 'Demo reservation' : 'Sandbox payment complete'}</span>
       <h2>You saved a little something.</h2>
       <p>${demo ? 'Your demo pickup has been reserved.' : 'Your PayPal sandbox payment is complete.'} Show this pass or pickup code at the shop before closing to collect your <b>${escapeHTML(title)}</b>.</p>
-      
       <div class="pickup-pass-card">
         <div class="pass-qr">${qrSVG}</div>
         <div class="pickup-code">YOUR PICKUP CODE<strong>${escapeHTML(pickupCode)}</strong></div>
@@ -832,10 +1015,10 @@ async function mountPaypal(listing) {
 
 function openListingForm(user) {
   state.selected = null;
-  drawerContent.innerHTML = `<div class="seller-head"><div class="eyebrow"><span class="eyebrow-dot"></span> FOR LOCAL SHOPS</div><h2 id="drawer-title">Make a little extra<br>go a little further.</h2><p>Tell us what’s left today. Your listing stays a draft until you’ve reviewed and published it.</p></div>
+  drawerContent.innerHTML = `<div class="seller-head"><div class="eyebrow"><span class="eyebrow-dot"></span> FOR LOCAL SHOPS</div><h2 id="drawer-title">Make a little extra<br>go a little further.</h2><p>List your closing picks with a few quick details; the AI helper can draft the copy, and you stay in control before publishing.</p></div>
     <form id="seller-form">
       <label class="form-label" for="shop-name">Shop name</label><input class="form-control" id="shop-name" name="shop" required value="${escapeHTML(user?.name || 'Morrow & Rye')}" readonly>
-      <div class="form-grid"><div><label class="form-label" for="category">Shop type</label><select class="form-control" id="category" name="category"><option>Bakery</option><option>Cafe</option><option>Other</option></select></div><div><label class="form-label" for="item-count">Bundles available</label><input class="form-control" id="item-count" name="quantity" type="number" min="1" max="100" value="4" required></div></div>
+      <div class="form-grid"><div><label class="form-label" for="category">Shop type</label><select class="form-control" id="category" name="category"><option>Bakery</option><option>Cafe</option><option>Market</option></select></div><div><label class="form-label" for="price">Offer price</label><input class="form-control" id="price" name="price" type="number" min="1" step="0.5" value="7.5" required></div></div>
       <label class="form-label" for="items">What’s in the surplus?</label>
       <div class="merchant-presets" role="group" aria-label="Quick surplus templates">
         <button type="button" class="preset-btn" data-preset="pastries">🥐 4 Croissants & Pastries</button>
@@ -843,10 +1026,10 @@ function openListingForm(user) {
         <button type="button" class="preset-btn" data-preset="lunch">🥪 3 Lunch Sandwiches</button>
         <button type="button" class="preset-btn" data-preset="treats">☕ 3 Cold Brews & Scones</button>
       </div>
-      <textarea class="form-control" id="items" name="items" rows="3" placeholder="e.g. 2 croissants, 1 sourdough loaf, 3 morning buns" required></textarea><p class="form-help">The writing assistant only uses details you provide.</p>
-      <div class="form-grid"><div><label class="form-label" for="original-value">Usual value per bundle</label><input class="form-control" id="original-value" name="originalValue" type="number" min="1" step="0.5" value="16" required></div><div><label class="form-label" for="price">Your price</label><input class="form-control" id="price" name="price" type="number" min="0.5" step="0.5" placeholder="Set after draft" required></div></div>
-      <div class="form-grid"><div><label class="form-label" for="pickup-by">Pick up by</label><input class="form-control" id="pickup-by" name="pickupBy" value="Today, 7:00 pm" required></div><div><label class="form-label" for="address">Shop address</label><input class="form-control" id="address" name="address" placeholder="Street and number" required></div></div>
-      <label class="form-label" for="ingredients">Ingredients & allergen information</label><textarea class="form-control" id="ingredients" name="ingredients" rows="2" placeholder="Only include information verified by your shop"></textarea><p class="form-help">LastPlate will not infer allergens. Keep this accurate and check with your team.</p>
+      <textarea class="form-control" id="items" name="items" rows="3" placeholder="e.g. 2 croissants, 1 sourdough loaf, 3 morning buns" required></textarea><p class="form-help">The writing assistant reads your notes and helps draft a description, but you review it before publishing.</p>
+      <div class="form-grid"><div><label class="form-label" for="original-value">Usual value per bundle</label><input class="form-control" id="original-value" name="originalValue" type="number" min="0" step="0.5" value="24" required></div><div><label class="form-label" for="quantity">Bundle quantity</label><input class="form-control" id="quantity" name="quantity" type="number" min="1" max="50" value="4" required></div></div>
+      <div class="form-grid"><div><label class="form-label" for="pickup-by">Pick up by</label><input class="form-control" id="pickup-by" name="pickupBy" value="Today, 7:00 pm" required></div><div><label class="form-label" for="address">Pickup address</label><input class="form-control" id="address" name="address" value="12 King Street West" required></div></div>
+      <label class="form-label" for="ingredients">Ingredients & allergen information</label><textarea class="form-control" id="ingredients" name="ingredients" rows="2" placeholder="Only include ingredient and allergen information you are confident about." required></textarea>
       <label class="form-label" for="notes">Other seller notes</label><input class="form-control" id="notes" name="notes" placeholder="e.g. packed in a paper bag">
       <div class="seller-actions"><button class="button button-outline" id="draft-button" type="button">✦ Draft with AI</button><button class="button button-dark" id="publish-button" type="submit">Publish find <span>↗</span></button></div>
       <div class="ai-status"><span class="ai-stars">✳</span><span id="ai-status-text">AI makes a first draft; you stay in control.</span></div><div id="seller-preview"></div>
@@ -884,7 +1067,7 @@ function openListingForm(user) {
       if (!priceInput.value) priceInput.value = Number(draft.suggestedPrice || 0).toFixed(2);
       else priceInput.value = Number(draft.suggestedPrice || priceInput.value).toFixed(2);
       document.querySelector('#ai-status-text').textContent = draft.note || 'Review the listing and set your price before publishing.';
-      document.querySelector('#seller-preview').innerHTML = `<div class="seller-preview"><b>Review and edit your AI draft · suggested ${money(draft.suggestedPrice)}</b><label class="form-label" for="draft-title">Listing title</label><input class="form-control" id="draft-title" maxlength="100" value="${escapeHTML(draft.title)}" required><label class="form-label" for="draft-description">Listing description</label><textarea class="form-control" id="draft-description" maxlength="500" rows="4" required>${escapeHTML(draft.description)}</textarea><div style="margin-top:6px;color:#88917f">Suggested tags: ${(draft.tags || []).map(escapeHTML).join(' · ')}</div></div>`;
+      document.querySelector('#seller-preview').innerHTML = `<div class="seller-preview"><b>Review and edit your AI draft · suggested ${money(draft.suggestedPrice)}</b><label class="form-label" for="draft-title">Title</label><input class="form-control" id="draft-title" value="${escapeHTML(draft.title)}"><label class="form-label" for="draft-description">Description</label><textarea class="form-control" id="draft-description" rows="4">${escapeHTML(draft.description)}</textarea></div>`;
       form.dataset.tags = JSON.stringify(draft.tags || []);
       notify('Draft ready. Review it, then publish when it looks right.');
     } catch (error) { notify(error.message); }
@@ -898,7 +1081,7 @@ function openListingForm(user) {
     const values = Object.fromEntries(new FormData(form).entries());
     const button = document.querySelector('#publish-button'); button.disabled = true; button.textContent = 'Publishing…';
     try {
-      const result = await api('/api/listings', { ...values, title: approvedTitle, description: approvedDescription, image: values.category === 'Bakery' ? '🥐' : values.category === 'Cafe' ? '🥗' : '🍽️', tags: JSON.parse(form.dataset.tags || '[]') });
+      const result = await api('/api/listings', { ...values, title: approvedTitle, description: approvedDescription, image: values.category === 'Bakery' ? '🥐' : values.category === 'Cafe' ? '☕' : '🥬' });
       await refreshListings(); await renderSellerDashboard(user); notify('Your surplus is on the menu.');
     } catch (error) { notify(error.message); button.disabled = false; button.innerHTML = 'Publish find <span>↗</span>'; }
   });
@@ -906,14 +1089,15 @@ function openListingForm(user) {
 
 function showSellerAuth(mode = 'login') {
   const isSignup = mode === 'signup';
-  drawerContent.innerHTML = `<section class="seller-auth"><div class="eyebrow"><span class="eyebrow-dot"></span> FOR LOCAL SHOPS</div><h2>${isSignup ? 'Create your shop account' : 'Welcome back'}</h2><p>${isSignup ? 'Set up an account to publish and manage your surplus listings.' : 'Sign in to manage listings and pickup orders.'}</p>
+  drawerContent.innerHTML = `<section class="seller-auth"><div class="eyebrow"><span class="eyebrow-dot"></span> FOR LOCAL SHOPS</div><h2>${isSignup ? 'Create your shop account' : 'Welcome back'}</h2><p>${isSignup ? 'List your surplus in minutes and manage pickups without stress.' : 'Sign in to keep your menu, orders, and pickup verification in sync.'}</p>
     <form id="seller-auth-form">
       ${isSignup ? '<label class="form-label" for="seller-name">Shop name</label><input class="form-control" id="seller-name" name="name" maxlength="120" autocomplete="organization" required>' : ''}
       <label class="form-label" for="seller-email">Email</label><input class="form-control" id="seller-email" name="email" type="email" autocomplete="email" required>
-      <label class="form-label" for="seller-password">Password</label><input class="form-control" id="seller-password" name="password" type="password" minlength="8" maxlength="100" autocomplete="${isSignup ? 'new-password' : 'current-password'}" required>
+      <label class="form-label" for="seller-password">Password</label><input class="form-control" id="seller-password" name="password" type="password" minlength="8" maxlength="100" autocomplete="current-password" required>
       <button class="button button-dark" type="submit" style="width:100%;justify-content:center;margin-top:18px">${isSignup ? 'Create account' : 'Sign in'} <span>↗</span></button>
     </form>
-    <p class="seller-auth-switch">${isSignup ? 'Already have a shop account?' : 'New to LastPlate?'} <button id="seller-auth-toggle" type="button">${isSignup ? 'Sign in' : 'Create an account'}</button></p></section>`;
+    <p class="seller-auth-switch">${isSignup ? 'Already have a shop account?' : 'New to LastPlate?'} <button id="seller-auth-toggle" type="button">${isSignup ? 'Sign in' : 'Create an account'}</button></p>
+  </section>`;
   openDrawer();
   document.querySelector('#seller-auth-toggle').addEventListener('click', () => showSellerAuth(isSignup ? 'login' : 'signup'));
   document.querySelector('#seller-auth-form').addEventListener('submit', async (event) => {
@@ -1023,7 +1207,7 @@ async function renderSellerDashboard(user) {
     const totalDivertedMeals = orders.reduce((acc, o) => acc + Number(o.quantity || 1), 0) + (listings.length ? 19 : 0);
 
     drawerContent.innerHTML = `<section class="seller-dashboard">
-      <div class="seller-dashboard-head"><div><div class="eyebrow"><span class="eyebrow-dot"></span> SHOP DASHBOARD</div><h2>${escapeHTML(user?.name || 'Your shop')}</h2><p>${activeCount} active listing${activeCount === 1 ? '' : 's'} · ${pendingCount} pickup${pendingCount === 1 ? '' : 's'} to prepare</p></div>
+      <div class="seller-dashboard-head"><div><div class="eyebrow"><span class="eyebrow-dot"></span> SHOP DASHBOARD</div><h2>${escapeHTML(user?.name || 'Your shop')}</h2><p>${activeCount} active listing${activeCount === 1 ? '' : 's'} • ${pendingCount} pending pickup${pendingCount === 1 ? '' : 's'}</p></div>
         <div class="seller-dashboard-actions">
           <button id="dashboard-add-listing" type="button">＋ Add listing</button>
           <a href="/flyer.html" target="_blank" rel="noopener" class="seller-kit-btn" title="Print Counter Table Tent & Kit">📄 Counter Kit</a>
@@ -1063,8 +1247,8 @@ async function renderSellerDashboard(user) {
         <div id="verify-feedback" class="verify-feedback hidden"></div>
       </div>
 
-      <section class="seller-dashboard-section"><h3>Your listings</h3><div class="seller-dashboard-list">${listings.length ? listings.map((listing) => `<article class="seller-dashboard-item"><div><h4>${escapeHTML(listing.title)}</h4><p>${money(listing.price)} · ${listing.quantity} left · ${escapeHTML(listing.status)}</p></div><div class="seller-item-actions">${listing.status === 'active' ? `<button type="button" data-listing-deactivate="${listing.id}">Pause listing</button>` : `<button type="button" data-listing-activate="${listing.id}">Reactivate</button>`}</div></article>`).join('') : '<p class="seller-empty">No listings yet. Add your first surplus bundle.</p>'}</div></section>
-      <section class="seller-dashboard-section"><h3>Pickup orders</h3><div class="seller-dashboard-list">${orders.length ? orders.map((order) => `<article class="seller-dashboard-item"><div><h4>${escapeHTML(order.title || order.listingTitle || 'Bundle')} · ${order.quantity} bundle${order.quantity === 1 ? '' : 's'}</h4><p>${escapeHTML(order.buyerName)} · ${money(order.total)} · ${escapeHTML(order.status)} · Pickup code <span class="seller-order-code">${escapeHTML(order.pickupCode)}</span></p></div><div class="seller-order-actions">${order.status === 'reserved' || order.status === 'paid' ? `<button type="button" data-order-picked-up="${order.id}">Mark picked up</button><button type="button" data-order-cancel="${order.id}">Cancel</button>` : ''}</div></article>`).join('') : '<p class="seller-empty">No pickup orders yet.</p>'}</div></section>
+      <section class="seller-dashboard-section"><h3>Your listings</h3><div class="seller-dashboard-list">${listings.length ? listings.map((listing) => `<article class="seller-dashboard-item"><div><h4>${escapeHTML(listing.title)}</h4><p>${escapeHTML(listing.category)} · ${escapeHTML(listing.pickupBy)} · ${escapeHTML(listing.address)}</p></div><div class="seller-item-actions"><button type="button" data-listing-${listing.status === 'active' ? 'deactivate' : 'activate'}="${listing.id}">${listing.status === 'active' ? 'Mark sold out' : 'Reopen listing'}</button></div></article>`).join('') : '<div class="seller-empty">No listings yet. Add one to put surplus on the menu.</div>'}</div></section>
+      <section class="seller-dashboard-section"><h3>Pickup orders</h3><div class="seller-dashboard-list">${orders.length ? orders.map((order) => `<article class="seller-dashboard-item"><div><h4>${escapeHTML(order.title || order.listingTitle || 'Pickup order')}</h4><p><span class="seller-order-code">${escapeHTML(order.pickupCode || '—')}</span> · ${escapeHTML(order.status)} · ${money(order.total || 0)}</p></div><div class="seller-order-actions"><button type="button" data-order-picked-up="${order.id}" ${order.status === 'picked_up' ? 'disabled' : ''}>Mark picked up</button><button type="button" data-order-cancel="${order.id}" ${order.status === 'cancelled' ? 'disabled' : ''}>Cancel</button></div></article>`).join('') : '<div class="seller-empty">No pickup orders yet.</div>'}</div></section>
     </section>`;
     openDrawer();
     document.querySelector('#dashboard-add-listing').addEventListener('click', () => openListingForm(user));
@@ -1172,7 +1356,7 @@ document.querySelector('#ai-search-form').addEventListener('submit', async (even
     state.filter = 'All';
     document.querySelectorAll('.filter').forEach((filter) => filter.classList.toggle('active', filter.dataset.filter === 'All'));
     results.className = 'ai-results';
-    results.innerHTML = `<p>${escapeHTML(data.message)}${state.recommendations.length ? ` <b>${state.recommendations.length} match${state.recommendations.length === 1 ? '' : 'es'} below.</b>` : ''}</p><button type="button" id="clear-ai-results">Show all finds</button>`;
+    results.innerHTML = `<p>${escapeHTML(data.message)}${state.recommendations.length ? ` <b>${state.recommendations.length} match${state.recommendations.length === 1 ? '' : 'es'} below.</b>` : ''}</p>`;
     document.querySelector('#clear-ai-results').addEventListener('click', () => { state.recommendations = []; results.classList.add('hidden'); renderListings(); });
     renderListings();
   } catch (error) {
@@ -1204,8 +1388,8 @@ function renderAboutUs() {
 
     <div class="about-section">
       <h3>Why we started LastPlate</h3>
-      <p>Every single evening across Toronto, bakers and café cooks pull delicious sourdough loaves, butter croissants, sandwiches, and salads off the shelves simply because tomorrow needs a fresh batch. That food isn’t expired — it was baked hours ago with pride and care.</p>
-      <p>Meanwhile, food costs keep rising. We built LastPlate to make rescue as easy as picking up an afternoon snack: shops list their extra bundles in 2 minutes, and neighbors collect them at 50% to 70% off.</p>
+      <p>Every single evening across Toronto, bakers and café cooks pull delicious sourdough loaves, butter croissants, sandwiches, and salads off the shelves simply because tomorrow needs a fresh kind of attention.</p>
+      <p>Meanwhile, food costs keep rising. We built LastPlate to make rescue as easy as picking up an afternoon snack: shops list their extra bundles in 2 minutes, and neighbors collect them at a fair price instead of letting good food go to waste.</p>
     </div>
 
     <div class="about-values">
@@ -1264,6 +1448,26 @@ document.querySelector('#close-drawer').addEventListener('click', closeDrawer);
 overlay.addEventListener('click', (event) => { if (event.target === overlay) closeDrawer(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && overlay.classList.contains('open')) closeDrawer(); });
 
+document.addEventListener('click', (event) => {
+  const locationPicker = document.querySelector('#location-picker');
+  if (!locationPicker) return;
+  if (!locationPicker.contains(event.target)) toggleLocationMenu(false);
+});
+
+document.querySelector('#location-pill-button')?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const menu = document.querySelector('#location-menu');
+  if (!menu) return;
+  menu.classList.toggle('hidden');
+  document.querySelector('#location-pill-button').setAttribute('aria-expanded', menu.classList.contains('hidden') ? 'false' : 'true');
+});
+document.querySelector('#use-location-btn')?.addEventListener('click', requestUserLocation);
+document.querySelector('#postal-code-btn')?.addEventListener('click', applyPostalCodeLocation);
+document.querySelector('#clear-location-btn')?.addEventListener('click', clearLocation);
+document.querySelector('#postal-code-input')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') { event.preventDefault(); applyPostalCodeLocation(); }
+});
+
 window.addEventListener('hashchange', () => {
   if (window.location.hash === '#about') renderAboutUs();
   else if (window.location.hash === '#mypickups') renderMyPickups();
@@ -1271,6 +1475,8 @@ window.addEventListener('hashchange', () => {
 
 async function init() {
   try {
+    loadUserLocation();
+    updateLocationPill();
     state.config = await api('/api/config');
     if (!state.config.aiConfigured) document.querySelector('.ai-discovery-copy span').textContent = 'Preview only: add an OpenAI API key to enable live matching.';
     updatePickupsBadge();
@@ -1321,3 +1527,4 @@ document.querySelector('#close-camera-backdrop')?.addEventListener('click', stop
 setInterval(() => {
   if (state.view === 'grid') renderListings();
 }, 30000);
+

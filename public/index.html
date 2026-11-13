@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/hackathon.css">
@@ -57,7 +57,7 @@
       </div>
       <div class="hero-art" aria-label="Illustration of fresh bakery food">
         <div class="art-sun"></div><div class="art-note note-one">GOOD<br>THINGS<br>GO AGAIN <span>↗</span></div>
-        <div class="art-plate"><div class="plate-inner"><span class="food food-croissant">🥐</span><span class="food food-leaf">🥬</span><span class="food food-bread">🥖</span><span class="food food-tomato">🍅</span><span class="food food-cup">🥛</span></div></div>
+        <div class="art-plate"><div class="plate-inner"><span class="food food-croissant">🥐</span><span class="food food-leaf">🥬</span><span class="food food-bread">🥖</span><span class="food food-tomato">🍅</span><span class="food food-cup">☕</span></div></div>
         <div class="art-spark spark-one">✳</div><div class="art-spark spark-two">✳</div><div class="art-label">Made today, loved again <span>↗</span></div>
       </div>
     </section>
@@ -65,7 +65,24 @@
     <section class="nearby-section" id="nearby">
       <div class="section-top">
         <div><div class="eyebrow muted-eyebrow">A FEW GOOD FINDS</div><h2>On the menu <span>today</span></h2></div>
-        <div class="location-pill"><span>⌖</span><span>Downtown Toronto</span><span class="chevron">⌄</span></div>
+        <div class="location-picker" id="location-picker" style="position:relative;">
+          <button type="button" class="location-pill" id="location-pill-button" aria-expanded="false" aria-controls="location-menu" style="border: 1px solid rgba(41, 80, 59, 0.14); background: var(--paper, #fffefa); border-radius: 9999px; padding: 10px 18px; display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: #3b4b3d; box-shadow: 0 1px 2px rgba(20, 32, 24, 0.04); cursor: pointer;">
+            <span style="font-size:16px; color: var(--green, #29503b);">⌖</span>
+            <span id="location-pill-label">Use my location</span>
+            <span class="chevron">⌄</span>
+          </button>
+          <div class="location-menu hidden" id="location-menu" aria-live="polite" style="position:absolute; right:0; top:calc(100% + 10px); width: 290px; background: #fffefa; border: 1px solid rgba(41, 80, 59, 0.14); border-radius: 18px; box-shadow: 0 20px 48px -10px rgba(20, 32, 24, 0.12), 0 6px 14px -2px rgba(20, 32, 24, 0.04); padding: 14px; z-index:30;">
+            <button type="button" id="use-location-btn" style="width:100%; border: 1px solid rgba(41, 80, 59, 0.12); border-radius: 12px; background: #eef5eb; color: #1d3528; padding: 10px 12px; font:600 14px 'Plus Jakarta Sans', sans-serif; cursor:pointer; margin-bottom:12px;">Use my current location</button>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label for="postal-code-input" style="font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#5d6b5b;">Postal code</label>
+              <div style="display:flex; gap:8px;">
+                <input id="postal-code-input" type="text" inputmode="text" placeholder="e.g. M5V 2T6" maxlength="7" style="flex:1; min-height:40px; border:1px solid rgba(41, 80, 59, 0.16); border-radius:10px; padding: 0 10px; font: 600 14px 'Plus Jakarta Sans', sans-serif; background:#fff; color:#19241f;" />
+                <button type="button" id="postal-code-btn" style="border:1px solid rgba(41, 80, 59, 0.16); border-radius:10px; background:#29503b; color:#fff; font:700 13px 'Plus Jakarta Sans', sans-serif; padding: 0 12px; cursor:pointer;">Apply</button>
+              </div>
+            </div>
+            <button type="button" id="clear-location-btn" style="width:100%; margin-top:12px; border: 0; background: transparent; color: #5d6b5b; font: 600 13px 'Plus Jakarta Sans', sans-serif; cursor:pointer; padding: 8px 0;">Clear location</button>
+          </div>
+        </div>
       </div>
       <form class="ai-discovery" id="ai-search-form">
         <div class="ai-discovery-icon">✳</div>
@@ -108,8 +125,8 @@
     </section>
 
     <section class="how-section" id="how">
-      <div class="how-intro"><div class="eyebrow">GOOD FOOD, KEPT SIMPLE</div><h2>A small find<br>can do <em>a lot.</em></h2><p>Surplus shouldn’t go to waste. We make it easy for local shops to share the good stuff before closing time.</p></div>
-      <div class="how-steps"><article><div class="step-no">01</div><span class="step-emoji">👀</span><h3>Find your local</h3><p>See what nearby shops have fresh and ready today.</p></article><article><div class="step-no">02</div><span class="step-emoji">🛍️</span><h3>Pick a good thing</h3><p>Choose a surprise bundle at a happier price.</p></article><article><div class="step-no">03</div><span class="step-emoji">🚶</span><h3>Pop by & pick up</h3><p>Collect from the shop before its pickup time.</p></article></div>
+      <div class="how-intro"><div class="eyebrow">GOOD FOOD, KEPT SIMPLE</div><h2>A small find<br>can do <em>a lot.</em></h2><p>Surplus shouldn’t go to waste. We make it easy for local shops to squeeze a little more value out of closing-time inventory before it’s gone.</p></div>
+      <div class="how-steps"><article><div class="step-no">01</div><span class="step-emoji">👀</span><h3>Find your local</h3><p>See what nearby shops have fresh and ready today.</p></article><article><div class="step-no">02</div><span class="step-emoji">✅</span><h3>Reserve it</h3><p>Secure a pickup code before closing and keep your order clear.</p></article><article><div class="step-no">03</div><span class="step-emoji">🥕</span><h3>Pick up</h3><p>Show the pass at the counter and enjoy a little less waste.</p></article></div>
     </section>
     <section class="join-banner">
       <span class="join-illustration">🥐</span>
